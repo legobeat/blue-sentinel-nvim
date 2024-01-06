@@ -47,7 +47,7 @@ local srep = string.rep
 
 -- Calculates SHA1 for a string, returns it encoded as 40 hexadecimal digits.
 function sha1.sha1(str)
-	-- Input preprocessing.
+  -- Input preprocessing.
    -- First, append a `1` bit and seven `0` bits.
    local first_append = schar(0x80)
 

@@ -1,4 +1,3 @@
--- Generated using ntangle.nvim
 local base64 = require("instant.base64")
 local sha1 = require("instant.sha1")
 

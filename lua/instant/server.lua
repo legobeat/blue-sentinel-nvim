@@ -1,4 +1,3 @@
--- Generated using ntangle.nvim
 local websocket_server = require("instant.websocket_server")
 
 local num_connected = 0
