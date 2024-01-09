@@ -94,15 +94,15 @@ function conn_proto:send_text(str)
     }
 
     if send <= 125 then
-      frame[2] = frame[2] + send
+      frame[2] = send
     elseif send < math.pow(2, 16) then
-      frame[2] = frame[2] + 126
+      frame[2] = 126
       local b1 = bit.rshift(send, 8)
       local b2 = bit.band(send, 0xFF)
       table.insert(frame, b1)
       table.insert(frame, b2)
     else
-      frame[2] = frame[2] + 127
+      frame[2] = 127
       for i=0,7 do
         local b = bit.band(bit.rshift(send, (7-i)*8), 0xFF)
         table.insert(frame, b)
