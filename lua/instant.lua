@@ -263,7 +263,7 @@ function instantOpenOrCreateBuffer(buf)
 
             local add_range = {
               sx = -1,
-              sy = firstline,      
+              sy = firstline,
               ex = -1, -- at position there is \n
               ey = new_lastline
             }
@@ -275,7 +275,7 @@ function instantOpenOrCreateBuffer(buf)
               ey = lastline,
             }
 
-            while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and 
+            while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
                 (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
 
               local c1, c2
@@ -306,7 +306,7 @@ function instantOpenOrCreateBuffer(buf)
               del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
             end
 
-            while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and 
+            while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
                 (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
 
               local c1, c2
@@ -387,7 +387,7 @@ function instantOpenOrCreateBuffer(buf)
               end
 
               for x=startx,endx do
-                len_insert = len_insert + 1 
+                len_insert = len_insert + 1
               end
               startx = -1
             end
@@ -561,9 +561,9 @@ local function MarkRange()
     else lecol = -1 end
 
     vim.api.nvim_buf_add_highlight(
-      marks[agent].buf, 
-      marks[agent].ns_id, 
-      "TermCursor", 
+      marks[agent].buf,
+      marks[agent].ns_id,
+      "TermCursor",
       y, lscol, lecol)
   end
 
@@ -650,7 +650,7 @@ local function findCharPositionExact(opid)
 
   local y = y1
   for x,pid in ipairs(pids[y]) do
-    if isPIDEqual(pid, opid) then 
+    if isPIDEqual(pid, opid) then
       return x, y
     end
 
@@ -711,7 +711,7 @@ function genPID(p, q, s, i)
 
   local G = genPID(p, q, s, i+1)
   table.insert(G, 1, {
-    (p[i] and p[i][1]) or 0, 
+    (p[i] and p[i][1]) or 0,
     (p[i] and p[i][2]) or s})
   return G
 end
@@ -762,7 +762,7 @@ function genPIDSeq(p, q, s, i, N)
   local G = genPIDSeq(p, q, s, i+1, N)
   for j=1,N do
     table.insert(G[j], 1, {
-      (p[i] and p[i][1]) or 0, 
+      (p[i] and p[i][1]) or 0,
       (p[i] and p[i][2]) or s})
   end
   return G
@@ -864,14 +864,14 @@ local function StartClient(first, appuri, port)
             end
             opcol = x
 
-            if op[2] == "\n" then 
+            if op[2] == "\n" then
               local py, py1 = splitArray(pids[y], x+1)
               pids[y] = py
               table.insert(py1, 1, op[3])
               table.insert(pids, y+1, py1)
             else table.insert(pids[y], x+1, op[3] ) end
 
-            if op[2] == "\n" then 
+            if op[2] == "\n" then
               if y-2 >= 0 then
                 local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
                 local l, r = utf8split(curline, x-1)
@@ -879,13 +879,13 @@ local function StartClient(first, appuri, port)
               else
                 vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
               end
-            else 
+            else
               local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
               curline = utf8insert(curline, x-1, op[2])
               vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
             end
 
-            if op[2] == "\n" then 
+            if op[2] == "\n" then
               if y-1 >= 1 then
                 local l, r = utf8split(prev[y-1], x-1)
                 prev[y-1] = l
@@ -893,7 +893,7 @@ local function StartClient(first, appuri, port)
               else
                 table.insert(prev, y, "")
               end
-            else 
+            else
               prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
             end
 
@@ -1005,7 +1005,7 @@ local function StartClient(first, appuri, port)
                   line = y-2,
                 }
                 if vim.api.nvim_buf_set_extmark then
-                  cursors[aut].ext_id = 
+                  cursors[aut].ext_id =
                     vim.api.nvim_buf_set_extmark(
                       buf, cursors[aut].id, y-2, bx, {})
                 end
@@ -1170,7 +1170,7 @@ local function StartClient(first, appuri, port)
 
                     local add_range = {
                       sx = -1,
-                      sy = firstline,      
+                      sy = firstline,
                       ex = -1, -- at position there is \n
                       ey = new_lastline
                     }
@@ -1182,7 +1182,7 @@ local function StartClient(first, appuri, port)
                       ey = lastline,
                     }
 
-                    while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and 
+                    while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
                         (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
 
                       local c1, c2
@@ -1213,7 +1213,7 @@ local function StartClient(first, appuri, port)
                       del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
                     end
 
-                    while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and 
+                    while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
                         (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
 
                       local c1, c2
@@ -1294,7 +1294,7 @@ local function StartClient(first, appuri, port)
                       end
 
                       for x=startx,endx do
-                        len_insert = len_insert + 1 
+                        len_insert = len_insert + 1
                       end
                       startx = -1
                     end
@@ -1554,7 +1554,7 @@ local function StartClient(first, appuri, port)
 
                       local add_range = {
                         sx = -1,
-                        sy = firstline,      
+                        sy = firstline,
                         ex = -1, -- at position there is \n
                         ey = new_lastline
                       }
@@ -1566,7 +1566,7 @@ local function StartClient(first, appuri, port)
                         ey = lastline,
                       }
 
-                      while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and 
+                      while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
                           (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
 
                         local c1, c2
@@ -1597,7 +1597,7 @@ local function StartClient(first, appuri, port)
                         del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
                       end
 
-                      while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and 
+                      while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
                           (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
 
                         local c1, c2
@@ -1678,7 +1678,7 @@ local function StartClient(first, appuri, port)
                         end
 
                         for x=startx,endx do
-                          len_insert = len_insert + 1 
+                          len_insert = len_insert + 1
                         end
                         startx = -1
                       end
@@ -1889,7 +1889,7 @@ local function StartClient(first, appuri, port)
 
                     local add_range = {
                       sx = -1,
-                      sy = firstline,      
+                      sy = firstline,
                       ex = -1, -- at position there is \n
                       ey = new_lastline
                     }
@@ -1901,7 +1901,7 @@ local function StartClient(first, appuri, port)
                       ey = lastline,
                     }
 
-                    while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and 
+                    while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
                         (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
 
                       local c1, c2
@@ -1932,7 +1932,7 @@ local function StartClient(first, appuri, port)
                       del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
                     end
 
-                    while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and 
+                    while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
                         (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
 
                       local c1, c2
@@ -2013,7 +2013,7 @@ local function StartClient(first, appuri, port)
                       end
 
                       for x=startx,endx do
-                        len_insert = len_insert + 1 
+                        len_insert = len_insert + 1
                       end
                       startx = -1
                     end
@@ -2273,7 +2273,7 @@ local function StartClient(first, appuri, port)
 
                       local add_range = {
                         sx = -1,
-                        sy = firstline,      
+                        sy = firstline,
                         ex = -1, -- at position there is \n
                         ey = new_lastline
                       }
@@ -2285,7 +2285,7 @@ local function StartClient(first, appuri, port)
                         ey = lastline,
                       }
 
-                      while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and 
+                      while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
                           (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
 
                         local c1, c2
@@ -2316,7 +2316,7 @@ local function StartClient(first, appuri, port)
                         del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
                       end
 
-                      while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and 
+                      while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
                           (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
 
                         local c1, c2
@@ -2397,7 +2397,7 @@ local function StartClient(first, appuri, port)
                         end
 
                         for x=startx,endx do
-                          len_insert = len_insert + 1 
+                          len_insert = len_insert + 1
                         end
                         startx = -1
                       end
@@ -2617,7 +2617,7 @@ local function StartClient(first, appuri, port)
             end
           end
 
-          client_hl_group[new_id] = user_hl_group 
+          client_hl_group[new_id] = user_hl_group
 
           for _, o in pairs(api_attach) do
             if o.on_clientconnected then
@@ -2660,7 +2660,7 @@ local function StartClient(first, appuri, port)
           local _, other_agent, rem, spid, epid = unpack(decoded)
           local ag, rembuf = unpack(rem)
           local buf = rem2loc[ag][rembuf]
-          
+
           local sx, sy = findCharPositionExact(spid)
           local ex, ey = findCharPositionExact(epid)
 
@@ -2685,8 +2685,8 @@ local function StartClient(first, appuri, port)
             else lecol = -1 end
 
             vim.api.nvim_buf_add_highlight(
-              marks[other_agent].buf, 
-              marks[other_agent].ns_id, 
+              marks[other_agent].buf,
+              marks[other_agent].ns_id,
               cursorGroup[client_hl_group[other_agent]],
               y-1, lscol, lecol)
           end
@@ -2874,7 +2874,7 @@ end
 local function Status()
   if ws_client and ws_client:is_active() then
     local positions = {}
-    for _, aut in pairs(id2author) do 
+    for _, aut in pairs(id2author) do
       local c = cursors[aut]
       if c then
         local buf = c.buf
@@ -2958,7 +2958,7 @@ local function SaveBuffers(force)
     vim.api.nvim_command("b " .. buf)
     if force then
       vim.api.nvim_command("w!") -- write all
-    else 
+    else
       vim.api.nvim_command("w") -- write all
     end
 
@@ -2979,7 +2979,7 @@ function OpenBuffers()
   local num_files = 0
   for _,file in ipairs(files) do
     vim.api.nvim_command("args " .. file)
-    num_files = num_files + 1 
+    num_files = num_files + 1
   end
   print("Opened " .. num_files .. " files.")
 end
@@ -3002,7 +3002,7 @@ local function undo(buf)
   -- the beginning. Because the undo will reverse
   -- the inserted character, it can happen that
   -- character are entered before any newline
-  -- which will error. To avoid the last op is 
+  -- which will error. To avoid the last op is
   -- swapped with first
   local lowest = nil
   local firstpid = allpids[buf][2][1]
@@ -3056,14 +3056,14 @@ local function undo(buf)
       end
       opcol = x
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         local py, py1 = splitArray(pids[y], x+1)
         pids[y] = py
         table.insert(py1, 1, op[3])
         table.insert(pids, y+1, py1)
       else table.insert(pids[y], x+1, op[3] ) end
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         if y-2 >= 0 then
           local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
           local l, r = utf8split(curline, x-1)
@@ -3071,13 +3071,13 @@ local function undo(buf)
         else
           vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
         end
-      else 
+      else
         local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
         curline = utf8insert(curline, x-1, op[2])
         vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
       end
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         if y-1 >= 1 then
           local l, r = utf8split(prev[y-1], x-1)
           prev[y-1] = l
@@ -3085,7 +3085,7 @@ local function undo(buf)
         else
           table.insert(prev, y, "")
         end
-      else 
+      else
         prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
       end
 
@@ -3197,7 +3197,7 @@ local function undo(buf)
             line = y-2,
           }
           if vim.api.nvim_buf_set_extmark then
-            cursors[aut].ext_id = 
+            cursors[aut].ext_id =
               vim.api.nvim_buf_set_extmark(
                 buf, cursors[aut].id, y-2, bx, {})
           end
@@ -3263,7 +3263,7 @@ local function redo(buf)
   -- the beginning. Because the undo will reverse
   -- the inserted character, it can happen that
   -- character are entered before any newline
-  -- which will error. To avoid the last op is 
+  -- which will error. To avoid the last op is
   -- swapped with first
   local lowest = nil
   local firstpid = allpids[buf][2][1]
@@ -3306,14 +3306,14 @@ local function redo(buf)
       end
       opcol = x
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         local py, py1 = splitArray(pids[y], x+1)
         pids[y] = py
         table.insert(py1, 1, op[3])
         table.insert(pids, y+1, py1)
       else table.insert(pids[y], x+1, op[3] ) end
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         if y-2 >= 0 then
           local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
           local l, r = utf8split(curline, x-1)
@@ -3321,13 +3321,13 @@ local function redo(buf)
         else
           vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
         end
-      else 
+      else
         local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
         curline = utf8insert(curline, x-1, op[2])
         vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
       end
 
-      if op[2] == "\n" then 
+      if op[2] == "\n" then
         if y-1 >= 1 then
           local l, r = utf8split(prev[y-1], x-1)
           prev[y-1] = l
@@ -3335,7 +3335,7 @@ local function redo(buf)
         else
           table.insert(prev, y, "")
         end
-      else 
+      else
         prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
       end
 
@@ -3447,7 +3447,7 @@ local function redo(buf)
             line = y-2,
           }
           if vim.api.nvim_buf_set_extmark then
-            cursors[aut].ext_id = 
+            cursors[aut].ext_id =
               vim.api.nvim_buf_set_extmark(
                 buf, cursors[aut].id, y-2, bx, {})
           end
@@ -3511,7 +3511,7 @@ local function attach(callbacks)
     elseif name == "on_data" then
       o.on_data = callbacks.on_data
 
-    else 
+    else
       error("[instant.nvim] Unknown callback " .. name)
     end
   end
