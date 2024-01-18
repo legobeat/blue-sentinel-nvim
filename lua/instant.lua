@@ -193,7 +193,14 @@ local function get_xor_range(add_range, del_range, firstline, cur_lines)
   go_from_ending_and_eliminate_same(add_range, del_range, firstline, cur_lines)
 end
 
-local function register_buf_change_callback(_buf)
+local function attach_to_buffer(_buf)
+  attached[_buf] = nil
+  detach[_buf] = nil
+  undostack[_buf] = {}
+  undosp[_buf] = 0
+  undoslice[_buf] = {}
+  ignores[_buf] = {}
+
   if not attached[_buf] then
     local attach_success = vim.api.nvim_buf_attach(_buf, false, {
       on_lines = function(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
@@ -501,19 +508,7 @@ function instantOpenOrCreateBuffer(buf)
 
       ws_client:send_text(encoded)
 
-
-      attached[buf] = nil
-
-      detach[buf] = nil
-
-      undostack[buf] = {}
-      undosp[buf] = 0
-
-      undoslice[buf] = {}
-
-      ignores[buf] = {}
-
-      register_buf_change_callback(buf)
+      attach_to_buffer(buf)
     end
   end
 end
@@ -1148,18 +1143,7 @@ local function StartClient(first, appuri, port)
               buf = vim.api.nvim_create_buf(true, true)
 
               received[buf] = true
-              attached[buf] = nil
-
-              detach[buf] = nil
-
-              undostack[buf] = {}
-              undosp[buf] = 0
-
-              undoslice[buf] = {}
-
-              ignores[buf] = {}
-
-              register_buf_change_callback(buf)
+              attach_to_buffer(buf)
 
               vim.api.nvim_buf_set_name(buf, bufname)
 
@@ -1272,18 +1256,7 @@ local function StartClient(first, appuri, port)
               end
 
               for _, buf in ipairs(bufs) do
-                attached[buf] = nil
-
-                detach[buf] = nil
-
-                undostack[buf] = {}
-                undosp[buf] = 0
-
-                undoslice[buf] = {}
-
-                ignores[buf] = {}
-
-                register_buf_change_callback(buf)
+                attach_to_buffer(buf)
               end
 
               for _, buf in ipairs(bufs) do
@@ -1345,19 +1318,7 @@ local function StartClient(first, appuri, port)
 
             else
               local buf = singlebuf
-
-              attached[buf] = nil
-
-              detach[buf] = nil
-
-              undostack[buf] = {}
-              undosp[buf] = 0
-
-              undoslice[buf] = {}
-
-              ignores[buf] = {}
-
-              register_buf_change_callback(buf)
+              attach_to_buffer(buf)
 
               if not rem2loc[agent] then
                 rem2loc[agent] = {}
@@ -1468,20 +1429,7 @@ local function StartClient(first, appuri, port)
 
 
               if not sessionshare then
-                local buf = singlebuf
-
-                attached[buf] = nil
-
-                detach[buf] = nil
-
-                undostack[buf] = {}
-                undosp[buf] = 0
-
-                undoslice[buf] = {}
-
-                ignores[buf] = {}
-
-                register_buf_change_callback(buf)
+                attach_to_buffer(singlebuf)
               end
               local obj = {
                 MSG_TYPE.REQUEST,
