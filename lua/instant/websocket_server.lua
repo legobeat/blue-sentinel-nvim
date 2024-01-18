@@ -90,7 +90,7 @@ function conn_proto:send_text(str)
     else opcode = 0 end
 
     local frame = {
-      fin+opcode
+      fin+opcode, 0
     }
 
     if send <= 125 then
