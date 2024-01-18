@@ -58,15 +58,15 @@ if vim.g.instant_log then
   log_filename = vim.fn.stdpath("data") .. "/instant.log"
 end
 local MSG_TYPE = {
-  DATA = 9,
-  AVAILABLE = 2,
-  REQUEST = 3,
-  INITIAL = 6,
-  INFO = 5,
-  MARK = 10,
-  TEXT = 1,
-  CONNECT = 7,
+  TEXT       = 1,
+  AVAILABLE  = 2,
+  REQUEST    = 3,
+  INFO       = 5,
+  INITIAL    = 6,
+  CONNECT    = 7,
   DISCONNECT = 8,
+  DATA       = 9,
+  MARK       = 10,
 }
 local OP_TYPE = {
   DEL = 1,
@@ -787,8 +787,6 @@ local function StartClient(first, appuri, port)
         if decoded[1] == MSG_TYPE.TEXT then
           local _, op, other_rem, other_agent = unpack(decoded)
           local lastPID
-          local opline = 0
-          local opcol = 0
 
           local ag, bufid = unpack(other_rem)
           buf = rem2loc[ag][bufid]
@@ -803,13 +801,6 @@ local function StartClient(first, appuri, port)
             lastPID = op[3]
 
             local x, y = findCharPositionBefore(op[3])
-
-            if op[2] == "\n" then
-              opline = y-1
-            else
-              opline = y-2
-            end
-            opcol = x
 
             if op[2] == "\n" then
               local py, py1 = splitArray(pids[y], x+1)
@@ -851,13 +842,6 @@ local function StartClient(first, appuri, port)
             local sx, sy = findCharPositionExact(op[2])
 
             if sx then
-              if sx == 1 then
-                opline = sy-1
-              else
-                opline = sy-2
-              end
-              opcol = sx-2
-
               if sx == 1 then
                 if sy-3 >= 0 then
                   local prevline = vim.api.nvim_buf_get_lines(buf, sy-3, sy-2, true)[1]
@@ -1890,11 +1874,7 @@ local function undo(buf)
 
     elseif op[1] == OP_TYPE.DEL then
       op = { OP_TYPE.INS, op[3], op[2] }
-
     end
-
-    local opline = 0
-    local opcol = 0
 
     local ag, bufid = unpack(other_rem)
     buf = rem2loc[ag][bufid]
@@ -1909,13 +1889,6 @@ local function undo(buf)
       lastPID = op[3]
 
       local x, y = findCharPositionBefore(op[3])
-
-      if op[2] == "\n" then
-        opline = y-1
-      else
-        opline = y-2
-      end
-      opcol = x
 
       if op[2] == "\n" then
         local py, py1 = splitArray(pids[y], x+1)
@@ -1957,13 +1930,6 @@ local function undo(buf)
       local sx, sy = findCharPositionExact(op[2])
 
       if sx then
-        if sx == 1 then
-          opline = sy-1
-        else
-          opline = sy-2
-        end
-        opcol = sx-2
-
         if sx == 1 then
           if sy-3 >= 0 then
             local prevline = vim.api.nvim_buf_get_lines(buf, sy-3, sy-2, true)[1]
@@ -2143,9 +2109,6 @@ local function redo(buf)
   disable_undo = true
   local lastPID
   for _, op in ipairs(ops) do
-    local opline = 0
-    local opcol = 0
-
     local ag, bufid = unpack(other_rem)
     buf = rem2loc[ag][bufid]
 
@@ -2159,13 +2122,6 @@ local function redo(buf)
       lastPID = op[3]
 
       local x, y = findCharPositionBefore(op[3])
-
-      if op[2] == "\n" then
-        opline = y-1
-      else
-        opline = y-2
-      end
-      opcol = x
 
       if op[2] == "\n" then
         local py, py1 = splitArray(pids[y], x+1)
@@ -2207,13 +2163,6 @@ local function redo(buf)
       local sx, sy = findCharPositionExact(op[2])
 
       if sx then
-        if sx == 1 then
-          opline = sy-1
-        else
-          opline = sy-2
-        end
-        opcol = sx-2
-
         if sx == 1 then
           if sy-3 >= 0 then
             local prevline = vim.api.nvim_buf_get_lines(buf, sy-3, sy-2, true)[1]
