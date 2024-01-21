@@ -967,8 +967,18 @@ local function StartClient(first, appuri, port)
 
         if decoded[1] == MSG_TYPE.REQUEST then
           local encoded
-          if not sessionshare then
-            local buf = singlebuf
+
+          local function pidslist(b)
+            local ps = {}
+            for _,lpid in ipairs(allpids[b]) do
+              for _,pid in ipairs(lpid) do
+                table.insert(ps, pid[1][1])
+              end
+            end
+            return ps
+          end
+
+          local function send_initial_for_buffer(buf)
             local rem
             if loc2rem[buf] then
               rem = loc2rem[buf]
@@ -984,25 +994,21 @@ local function StartClient(first, appuri, port)
               { fullname, ":t" })
             end
 
-            local pidslist = {}
-            for _,lpid in ipairs(allpids[buf]) do
-              for _,pid in ipairs(lpid) do
-                table.insert(pidslist, pid[1][1])
-              end
-            end
-
             local obj = {
               MSG_TYPE.INITIAL,
               bufname,
               rem,
-              pidslist,
+              pidslist(buf),
               allprev[buf]
             }
 
             encoded = vim.api.nvim_call_function("json_encode", {  obj  })
 
             ws_client:send_text(encoded)
+          end
 
+          if not sessionshare then
+            send_initial_for_buffer(singlebuf)
           else
             local allbufs = vim.api.nvim_list_bufs()
             local bufs = {}
@@ -1015,35 +1021,7 @@ local function StartClient(first, appuri, port)
             end
 
             for _,buf in ipairs(bufs) do
-              local rem = { agent, buf }
-              local fullname = vim.api.nvim_buf_get_name(buf)
-              local cwdname = vim.api.nvim_call_function("fnamemodify",
-                { fullname, ":." })
-              local bufname = cwdname
-              if bufname == fullname then
-                bufname = vim.api.nvim_call_function("fnamemodify",
-                { fullname, ":t" })
-              end
-
-              local pidslist = {}
-              for _,lpid in ipairs(allpids[buf]) do
-                for _,pid in ipairs(lpid) do
-                  table.insert(pidslist, pid[1][1])
-                end
-              end
-
-              local obj = {
-                MSG_TYPE.INITIAL,
-                bufname,
-                rem,
-                pidslist,
-                allprev[buf]
-              }
-
-              encoded = vim.api.nvim_call_function("json_encode", {  obj  })
-
-              ws_client:send_text(encoded)
-
+              send_initial_for_buffer(buf)
             end
           end
         end
