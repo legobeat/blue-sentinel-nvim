@@ -972,7 +972,7 @@ local function StartClient(first, appuri, port)
             local ps = {}
             for _,lpid in ipairs(allpids[b]) do
               for _,pid in ipairs(lpid) do
-                table.insert(ps, pid[1][1])
+                table.insert(ps, pid)
               end
             end
             return ps
@@ -1075,19 +1075,19 @@ local function StartClient(first, appuri, port)
             local pidindex = 1
             pids = {}
 
-            table.insert(pids, { { { pidslist[pidindex], 0 } } })
+            table.insert(pids, { pidslist[pidindex] })
             pidindex = pidindex + 1
 
             for _, line in ipairs(content) do
               local lpid = {}
               for i=0,utf8len(line) do
-                table.insert(lpid, { { pidslist[pidindex], ag } })
+                table.insert(lpid, pidslist[pidindex])
                 pidindex = pidindex + 1
               end
               table.insert(pids, lpid)
             end
 
-            table.insert(pids, { { { pidslist[pidindex], 0 } } })
+            table.insert(pids, { pidslist[pidindex] })
 
 
             local tick = vim.api.nvim_buf_get_changedtick(buf)+1
@@ -1107,19 +1107,19 @@ local function StartClient(first, appuri, port)
             local pidindex = 1
             pids = {}
 
-            table.insert(pids, { { { pidslist[pidindex], 0 } } })
+            table.insert(pids, { pidslist[pidindex] })
             pidindex = pidindex + 1
 
             for _, line in ipairs(content) do
               local lpid = {}
               for i=0,utf8len(line) do
-                table.insert(lpid, { { pidslist[pidindex], ag } })
+                table.insert(lpid, pidslist[pidindex])
                 pidindex = pidindex + 1
               end
               table.insert(pids, lpid)
             end
 
-            table.insert(pids, { { { pidslist[pidindex], 0 } } })
+            table.insert(pids, { pidslist[pidindex] })
 
 
             local tick = vim.api.nvim_buf_get_changedtick(buf)+1
