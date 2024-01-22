@@ -201,7 +201,7 @@ local function attach_to_current_buffer(buf)
                 end
                 table.remove(pids, y+2)
 
-                SendOp(buf, { OP_TYPE.DEL, del_pid, "\n" })
+                SendOp(buf, { OP_TYPE.DEL, "\n", del_pid })
 
               end
             else
@@ -212,7 +212,7 @@ local function attach_to_current_buffer(buf)
               local del_pid = pids[y+2][x+2]
               table.remove(pids[y+2], x+2)
 
-              SendOp(buf, { OP_TYPE.DEL, del_pid, c })
+              SendOp(buf, { OP_TYPE.DEL, c, del_pid })
 
             end
           end
@@ -837,9 +837,9 @@ local function StartClient(first, appuri, port)
 
 
           elseif op[1] == OP_TYPE.DEL then
-            lastPID = findPIDBefore(op[2])
+            lastPID = findPIDBefore(op[3])
 
-            local sx, sy = findCharPositionExact(op[2])
+            local sx, sy = findCharPositionExact(op[3])
 
             if sx then
               if sx == 1 then
@@ -1903,9 +1903,9 @@ local function undo(buf)
 
 
     elseif op[1] == OP_TYPE.DEL then
-      lastPID = findPIDBefore(op[2])
+      lastPID = findPIDBefore(op[3])
 
-      local sx, sy = findCharPositionExact(op[2])
+      local sx, sy = findCharPositionExact(op[3])
 
       if sx then
         if sx == 1 then
@@ -2136,9 +2136,9 @@ local function redo(buf)
 
 
     elseif op[1] == OP_TYPE.DEL then
-      lastPID = findPIDBefore(op[2])
+      lastPID = findPIDBefore(op[3])
 
-      local sx, sy = findCharPositionExact(op[2])
+      local sx, sy = findCharPositionExact(op[3])
 
       if sx then
         if sx == 1 then
