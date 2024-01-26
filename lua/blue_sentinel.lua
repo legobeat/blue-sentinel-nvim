@@ -329,9 +329,9 @@ local function attach_to_current_buffer(buf)
       end
     })
 
-    vim.api.nvim_buf_set_keymap(buf, 'n', 'u', '<cmd>lua require("blue_sentinel").undo(' .. buf .. ')<CR>', {noremap = true})
-
-    vim.api.nvim_buf_set_keymap(buf, 'n', '<C-r>', '<cmd>lua require("blue_sentinel").redo(' .. buf .. ')<CR>', {noremap = true})
+    -- Commented until I understand how the undo engine works
+    -- vim.api.nvim_buf_set_keymap(buf, 'n', 'u', '<cmd>lua require("blue_sentinel").undo(' .. buf .. ')<CR>', {noremap = true})
+    -- vim.api.nvim_buf_set_keymap(buf, 'n', '<C-r>', '<cmd>lua require("blue_sentinel").redo(' .. buf .. ')<CR>', {noremap = true})
 
 
     if attach_success then
