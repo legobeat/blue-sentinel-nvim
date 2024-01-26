@@ -1,14 +1,16 @@
-instant.nvim
+blue-sentinel-nvim
 ============
 
-**instant.nvim** is a **collaborative editing** plugin for **Neovim** written in **Lua** with no dependencies.
+**Blue Sentinel** is a family of cross-editor **collaborative editing** plugins.
 
-* [Design document](https://github.com/jbyuki/instant.nvim/wiki/Design-Document)
-* [Protocol](https://github.com/jbyuki/instant.nvim/wiki/Protocol)
-* [Deploy a server](https://github.com/jbyuki/instant.nvim/wiki/Deploy-a-server)
-* [API](https://github.com/jbyuki/instant.nvim/wiki/API)
-* [Commands](https://github.com/jbyuki/instant.nvim/wiki/Commands)
-* [Technical Overview](https://github.com/jbyuki/instant.nvim/wiki/Technical-Overview)
+It supports multiple text editors, presently Neovim and VSCode, with a protocol meant to allow extension to other editors in the future.
+
+* [Design document](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Design-Document)
+* [Protocol](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Protocol)
+* [Deploy a server](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Deploy-a-server)
+* [API](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/API)
+* [Commands](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Commands)
+* [Technical Overview](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Technical-Overview)
 
 [![Untitled-Project.gif](https://i.postimg.cc/50vfZ6Wr/Untitled-Project.gif)](https://postimg.cc/yg1qR6dh)
 
@@ -42,7 +44,7 @@ Install
 Install using a plugin manager such as [vim-plug](https://github.com/junegunn/vim-plug).
 
 ```
-Plug 'jbyuki/instant.nvim'
+Plug 'letsbreelhere/blue-sentinel-nvim'
 ```
 
 Configurations
@@ -54,7 +56,7 @@ Configurations
 let g:blue_sentinel_username = "USERNAME"
 ```
 
-See [here](https://github.com/jbyuki/instant.nvim/wiki/Customization) for more customization options.
+See [here](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Customization) for more customization options.
 
 Usage
 -----
@@ -68,7 +70,7 @@ For a localhost or LAN network, you can simple use the built-in server included 
 * Start it with `:BlueSentinelStartServer [host] [port]`
 * When done stop it with `:BlueSentinelStopServer`
 
-The default is to serve localhost only, on port 8080. For a more advanced (remote server) overview see [Deploy a server](https://github.com/jbyuki/instant.nvim/wiki/Deploy-a-server)
+The default is to serve localhost only, on port 8080. For a more advanced (remote server) overview see [Deploy a server](https://github.com/letsbreelhere/blue-sentinel-nvim/wiki/Deploy-a-server)
 
 ### Client (Neovim)
 
@@ -107,7 +109,7 @@ Additional useful sharing commands are:
 
 ### Help
 
-* If you encounter any problem, please don't hesitate to open an [Issue](https://github.com/jbyuki/instant.nvim/issues)
+* If you encounter any problem, please don't hesitate to open an [Issue](https://github.com/letsbreelhere/blue-sentinel-nvim/issues)
 ### Contributions
 
 * All contributions are welcome

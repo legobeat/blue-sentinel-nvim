@@ -1,42 +1,41 @@
 " Vim global plugin for remote collaborative editing
-" Creation Date: 2020 Sep 3
-" Maintainer:  jbyuki
+" Maintainer:  Bree Gardner
 " License:     MIT
 
 let s:save_cpo = &cpo
 set cpo&vim
 
-if exists("g:loaded_instant")
+if exists("g:loaded_blue_sentinel")
 	finish
 endif
-let g:loaded_instant = 1
+let g:loaded_blue_sentinel = 1
 
-command! -nargs=* BlueSentinelStartSingle call instant#StartSingleWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartSingle call blue_sentinel#StartSingleWrapper(<f-args>)
 
-command! -nargs=* BlueSentinelJoinSingle call instant#JoinSingleWrapper(<f-args>)
+command! -nargs=* BlueSentinelJoinSingle call blue_sentinel#JoinSingleWrapper(<f-args>)
 
-command! BlueSentinelStatus call luaeval('require("instant").Status()')
+command! BlueSentinelStatus call luaeval('require("blue_sentinel").Status()')
 
-command! -nargs=* BlueSentinelStop call luaeval('require("instant").Stop()')
+command! -nargs=* BlueSentinelStop call luaeval('require("blue_sentinel").Stop()')
 
-command! -nargs=* BlueSentinelStartSession call instant#StartSessionWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartSession call blue_sentinel#StartSessionWrapper(<f-args>)
 
-command! -nargs=* BlueSentinelJoinSession call instant#JoinSessionWrapper(<f-args>)
+command! -nargs=* BlueSentinelJoinSession call blue_sentinel#JoinSessionWrapper(<f-args>)
 
-command! -nargs=* BlueSentinelFollow call instant#StartFollowWrapper(<f-args>)
+command! -nargs=* BlueSentinelFollow call blue_sentinel#StartFollowWrapper(<f-args>)
 
-command! BlueSentinelStopFollow call instant#StopFollowWrapper()
+command! BlueSentinelStopFollow call blue_sentinel#StopFollowWrapper()
 
-command! -bang BlueSentinelSaveAll call instant#SaveAllWrapper(<bang>0)
+command! -bang BlueSentinelSaveAll call blue_sentinel#SaveAllWrapper(<bang>0)
 
-command! BlueSentinelOpenAll call luaeval('require("instant").OpenBuffers()')
+command! BlueSentinelOpenAll call luaeval('require("blue_sentinel").OpenBuffers()')
 
-command! -nargs=* BlueSentinelStartServer call instant#StartServerWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartServer call blue_sentinel#StartServerWrapper(<f-args>)
 
-command! BlueSentinelStopServer call luaeval('require("instant.server").StopServer()')
+command! BlueSentinelStopServer call luaeval('require("blue_sentinel.server").StopServer()')
 
-command! -range BlueSentinelMark lua require("instant").MarkRange()
-command! BlueSentinelMarkClear lua require("instant").MarkClear()
+command! -range BlueSentinelMark lua require("blue_sentinel").MarkRange()
+command! BlueSentinelMarkClear lua require("blue_sentinel").MarkClear()
 
 let &cpo = s:save_cpo
 unlet s:save_cpo

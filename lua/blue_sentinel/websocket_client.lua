@@ -1,4 +1,4 @@
-local base64 = require("instant.base64")
+local base64 = require("blue_sentinel.base64")
 
 local bit = require("bit")
 

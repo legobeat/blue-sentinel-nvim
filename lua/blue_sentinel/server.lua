@@ -1,4 +1,4 @@
-local websocket_server = require("instant.websocket_server")
+local websocket_server = require("blue_sentinel.websocket_server")
 
 local num_connected = 0
 local ws_server

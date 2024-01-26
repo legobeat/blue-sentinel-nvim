@@ -1,15 +1,15 @@
-*instant.txt* Collaborative editing in Neovim
+blue_sentinel Collaborative editing in Neovim
 
 ==============================================================================
-INTRODUCTION                            *instant*
+INTRODUCTION                            *blue_sentinel*
 
-`instant.nvim` implements a client and server for collaborative text editing.
+`blue_sentinel` implements a client and server for collaborative text editing.
 
 CONFIGURATION                           *blue_sentinel-config*
 
 Specify your username in your configuration file.
 >
- let g:instant_username = "USERNAME"
+ let g:blue_sentinel_username = "USERNAME"
 <
 
 COMMANDS                                *blue_sentinel-commands*
