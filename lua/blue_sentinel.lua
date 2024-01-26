@@ -1601,7 +1601,7 @@ end
 
 local function Start(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
@@ -1624,7 +1624,7 @@ end
 
 local function Join(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
@@ -1655,7 +1655,7 @@ end
 
 local function StartSession(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
@@ -1675,7 +1675,7 @@ end
 
 local function JoinSession(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then

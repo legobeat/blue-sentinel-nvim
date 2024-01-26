@@ -11,32 +11,32 @@ if exists("g:loaded_instant")
 endif
 let g:loaded_instant = 1
 
-command! -nargs=* InstantStartSingle call instant#StartSingleWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartSingle call instant#StartSingleWrapper(<f-args>)
 
-command! -nargs=* InstantJoinSingle call instant#JoinSingleWrapper(<f-args>)
+command! -nargs=* BlueSentinelJoinSingle call instant#JoinSingleWrapper(<f-args>)
 
-command! InstantStatus call luaeval('require("instant").Status()')
+command! BlueSentinelStatus call luaeval('require("instant").Status()')
 
-command! -nargs=* InstantStop call luaeval('require("instant").Stop()')
+command! -nargs=* BlueSentinelStop call luaeval('require("instant").Stop()')
 
-command! -nargs=* InstantStartSession call instant#StartSessionWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartSession call instant#StartSessionWrapper(<f-args>)
 
-command! -nargs=* InstantJoinSession call instant#JoinSessionWrapper(<f-args>)
+command! -nargs=* BlueSentinelJoinSession call instant#JoinSessionWrapper(<f-args>)
 
-command! -nargs=* InstantFollow call instant#StartFollowWrapper(<f-args>)
+command! -nargs=* BlueSentinelFollow call instant#StartFollowWrapper(<f-args>)
 
-command! InstantStopFollow call instant#StopFollowWrapper()
+command! BlueSentinelStopFollow call instant#StopFollowWrapper()
 
-command! -bang InstantSaveAll call instant#SaveAllWrapper(<bang>0)
+command! -bang BlueSentinelSaveAll call instant#SaveAllWrapper(<bang>0)
 
-command! InstantOpenAll call luaeval('require("instant").OpenBuffers()')
+command! BlueSentinelOpenAll call luaeval('require("instant").OpenBuffers()')
 
-command! -nargs=* InstantStartServer call instant#StartServerWrapper(<f-args>)
+command! -nargs=* BlueSentinelStartServer call instant#StartServerWrapper(<f-args>)
 
-command! InstantStopServer call luaeval('require("instant.server").StopServer()')
+command! BlueSentinelStopServer call luaeval('require("instant.server").StopServer()')
 
-command! -range InstantMark lua require("instant").MarkRange()
-command! InstantMarkClear lua require("instant").MarkClear()
+command! -range BlueSentinelMark lua require("instant").MarkRange()
+command! BlueSentinelMarkClear lua require("instant").MarkClear()
 
 let &cpo = s:save_cpo
 unlet s:save_cpo

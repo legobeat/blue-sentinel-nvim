@@ -1,4 +1,4 @@
-function instant#StartSingleWrapper(...)
+function blue_sentinelStartSingleWrapper(...)
 	if a:0 == 0 || a:0 > 2
 		echoerr "ARGUMENTS: [host] [port (default: 80)]"
 		return
@@ -11,7 +11,7 @@ function instant#StartSingleWrapper(...)
 	endif
 endfunction
 
-function instant#JoinSingleWrapper(...)
+function blue_sentinelJoinSingleWrapper(...)
 	if a:0 == 0 || a:0 > 2
 		echoerr "ARGUMENTS: [host] [port (default: 80)]"
 		return
@@ -24,7 +24,7 @@ function instant#JoinSingleWrapper(...)
 	endif
 endfunction
 
-function instant#StartSessionWrapper(...)
+function blue_sentinelStartSessionWrapper(...)
 	if a:0 == 0 || a:0 > 2
 		echoerr "ARGUMENTS: [host] [port (default: 80)]"
 		return
@@ -37,7 +37,7 @@ function instant#StartSessionWrapper(...)
 	endif
 endfunction
 
-function instant#JoinSessionWrapper(...)
+function blue_sentinelJoinSessionWrapper(...)
 	if a:0 == 0 || a:0 > 2
 		echoerr "ARGUMENTS: [host] [port (default: 80)]"
 		return
@@ -50,7 +50,7 @@ function instant#JoinSessionWrapper(...)
 	endif
 endfunction
 
-function instant#StartFollowWrapper(...)
+function blue_sentinelStartFollowWrapper(...)
 	if a:0 == 0 || a:0 > 1
 		echoerr "ARGUMENTS: [username]"
 		return
@@ -59,11 +59,11 @@ function instant#StartFollowWrapper(...)
 	call luaeval('require("instant").StartFollow("' .. a:1.. '")')
 endfunction
 
-function instant#StopFollowWrapper()
+function blue_sentinelStopFollowWrapper()
 	call luaeval('require("instant").StopFollow()')
 endfunction
 
-function instant#SaveAllWrapper(bang)
+function blue_sentinelSaveAllWrapper(bang)
 	if a:bang == 1
 		call luaeval('require("instant").SaveBuffers(true)')
 	else
@@ -71,7 +71,7 @@ function instant#SaveAllWrapper(bang)
 	endif
 endfunction
 
-function instant#StartServerWrapper(...)
+function blue_sentinelStartServerWrapper(...)
 	if a:0 == 0
 		call luaeval('require("instant.server").StartServer()')
 	elseif a:0 == 2

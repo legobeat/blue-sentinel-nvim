@@ -51,7 +51,7 @@ Configurations
 * Set your username in `init.vim`:
 
 ```
-let g:instant_username = "USERNAME"
+let g:blue_sentinel_username = "USERNAME"
 ```
 
 See [here](https://github.com/jbyuki/instant.nvim/wiki/Customization) for more customization options.
@@ -65,14 +65,14 @@ The collaborative editing plugin works with a server which connects together the
 
 For a localhost or LAN network, you can simple use the built-in server included in the plugin.
 
-* Start it with `:InstantStartServer [host] [port]`
-* When done stop it with `:InstantStopServer`
+* Start it with `:BlueSentinelStartServer [host] [port]`
+* When done stop it with `:BlueSentinelStopServer`
 
 The default is to serve localhost only, on port 8080. For a more advanced (remote server) overview see [Deploy a server](https://github.com/jbyuki/instant.nvim/wiki/Deploy-a-server)
 
 ### Client (Neovim)
 
-To start the client, the first user to connect to the server must initiates the share with a special commands with has the form `InstantStart...`. Subsequent joining clients, use a different command `InstantJoin...`. Having distinct commands to start and join a server ensures that files are not overwritten by accident on connection.
+To start the client, the first user to connect to the server must initiates the share with a special commands with has the form `BlueSentinelStart...`. Subsequent joining clients, use a different command `BlueSentinelJoin...`. Having distinct commands to start and join a server ensures that files are not overwritten by accident on connection.
 
 There are essentially two modes of sharing at the moment.
 
@@ -80,25 +80,25 @@ There are essentially two modes of sharing at the moment.
 * **Session sharing**: This will share all opened (and newly opened) buffers with the other clients. This can be thought of directory sharing without implicit writing on the file system.
 
 For single buffer sharing use:
-* `:InstantStartSingle [host] [port]` : Host is the URL or IP address. Port is 80 by default. Use this command if you're the first client to connect.
-* `:InstantJoinSingle [host] [port]` : Use this command if another client already initiated a single share.
-* `:InstantStop` : This will stop the client
+* `:BlueSentinelStartSingle [host] [port]` : Host is the URL or IP address. Port is 80 by default. Use this command if you're the first client to connect.
+* `:BlueSentinelJoinSingle [host] [port]` : Use this command if another client already initiated a single share.
+* `:BlueSentinelStop` : This will stop the client
 
 For session sharing:
 
-* `:InstantStartSession [host] [port]` : If you're the first client to connect.
-* `:InstantJoinSession [host] [port]` : Use this command if another client already initiated a session share
-* `:InstantStop`
+* `:BlueSentinelStartSession [host] [port]` : If you're the first client to connect.
+* `:BlueSentinelJoinSession [host] [port]` : Use this command if another client already initiated a session share
+* `:BlueSentinelStop`
 
 Additional useful sharing commands are:
 
-* `:InstantStatus` : Display the current connected clients as well as their locations
-* `:InstantFollow [user]`
-* `:InstantStopFollow`
-* `:InstantOpenAll` : Open all files in buffers in the current directory. Useful to share the whole directory in session sharing.
-* `:InstantSaveAll` : Save all opened buffers automatically. This will also create missing subdirectories.
-* `:InstantMark` : Visually mark a region
-* `:InstantMarkClear`
+* `:BlueSentinelStatus` : Display the current connected clients as well as their locations
+* `:BlueSentinelFollow [user]`
+* `:BlueSentinelStopFollow`
+* `:BlueSentinelOpenAll` : Open all files in buffers in the current directory. Useful to share the whole directory in session sharing.
+* `:BlueSentinelSaveAll` : Save all opened buffers automatically. This will also create missing subdirectories.
+* `:BlueSentinelMark` : Visually mark a region
+* `:BlueSentinelMarkClear`
 
 ### Tips and Tricks
 

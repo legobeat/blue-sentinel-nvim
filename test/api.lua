@@ -80,7 +80,7 @@ stdout:read_start(function(err, data)
     if vim.startswith(data, "Server is listening") then
       vim.schedule(function()
         vim.fn.rpcrequest(client1, 'nvim_exec', "new", false)
-        vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartSingle 127.0.0.1 8080", false)
+        vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartSingle 127.0.0.1 8080", false)
 
       end)
     end
@@ -90,7 +90,7 @@ stdout:read_start(function(err, data)
         num_connected = num_connected + 1
         if num_connected == 1 then
           vim.fn.rpcrequest(client2, 'nvim_exec', "new", false)
-          vim.fn.rpcrequest(client2, 'nvim_exec', "InstantJoinSingle 127.0.0.1 8080", false)
+          vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelJoinSingle 127.0.0.1 8080", false)
 
         elseif num_connected == 2 then
           local has_connect = vim.fn.rpcrequest(client1, 'nvim_eval', "v:lua.HasMessage('connect')")
@@ -145,7 +145,7 @@ stdout:read_start(function(err, data)
 
           local connected = vim.fn.rpcrequest(client2, 'nvim_eval', "v:lua.GetConnectedBufList()")
           assertEq("connected client 2", #connected, 1)
-          vim.fn.rpcrequest(client2, 'nvim_exec', "InstantStop", false)
+          vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelStop", false)
           vim.fn.rpcrequest(client2, 'nvim_exec', "bufdo bwipeout! %", false)
 
         end
@@ -157,7 +157,7 @@ stdout:read_start(function(err, data)
         num_connected = num_connected - 1
         log("Peer disconnected " .. num_connected)
         if num_connected == 1 then
-          vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStop", false)
+          vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStop", false)
           vim.fn.rpcrequest(client1, 'nvim_exec', "bufdo bwipeout! %", false)
 
         elseif num_connected == 0 then

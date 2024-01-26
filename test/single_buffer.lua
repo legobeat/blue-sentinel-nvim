@@ -70,9 +70,9 @@ if nodejs then
         vim.schedule(function()
           vim.fn.rpcrequest(client1, 'nvim_exec', "new", false)
           vim.fn.rpcrequest(client2, 'nvim_exec', "new", false)
-          vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartSingle 127.0.0.1 8080", false)
+          vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartSingle 127.0.0.1 8080", false)
           vim.wait(1000)
-          vim.fn.rpcrequest(client2, 'nvim_exec', "InstantJoinSingle 127.0.0.1 8080", false)
+          vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelJoinSingle 127.0.0.1 8080", false)
 
         end)
       end
@@ -358,8 +358,8 @@ if nodejs then
             assertEq(content1[1], "")
 
             vim.wait(1000)
-            vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStop", false)
-            vim.fn.rpcrequest(client2, 'nvim_exec', "InstantStop", false)
+            vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStop", false)
+            vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelStop", false)
 
           end
         end)
@@ -398,14 +398,14 @@ if nodejs then
 
 else
   vim.schedule(function()
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartServer", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartServer", false)
     vim.wait(1000)
 
     vim.fn.rpcrequest(client1, 'nvim_exec', "new", false)
     vim.fn.rpcrequest(client2, 'nvim_exec', "new", false)
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartSingle 127.0.0.1 8080", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartSingle 127.0.0.1 8080", false)
     vim.wait(1000)
-    vim.fn.rpcrequest(client2, 'nvim_exec', "InstantJoinSingle 127.0.0.1 8080", false)
+    vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelJoinSingle 127.0.0.1 8080", false)
 
     vim.wait(100)
     vim.fn.rpcrequest(client1, 'nvim_buf_set_lines', 0, 0, -1, true, { "test"} )
@@ -682,11 +682,11 @@ else
     assertEq(content1[1], "")
 
     vim.wait(1000)
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStop", false)
-    vim.fn.rpcrequest(client2, 'nvim_exec', "InstantStop", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStop", false)
+    vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelStop", false)
 
     vim.wait(1000)
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStopServer", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStopServer", false)
     vim.wait(1000)
 
     log("")

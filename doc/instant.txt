@@ -5,74 +5,74 @@ INTRODUCTION                            *instant*
 
 `instant.nvim` implements a client and server for collaborative text editing.
 
-CONFIGURATION                           *instant-config*
+CONFIGURATION                           *blue_sentinel-config*
 
 Specify your username in your configuration file.
 >
  let g:instant_username = "USERNAME"
 <
 
-COMMANDS                                *instant-commands*
+COMMANDS                                *blue_sentinel-commands*
 
-                                        *instant-:InstantStartServer*
- :InstantStartServer {host} {port}
+                                        *blue_sentinel-:BlueSentinelStartServer*
+ :BlueSentinelStartServer {host} {port}
                         Start the built-in server. Optionnally you can specify
                         the {host} and {port}. By default the server will
                         start on 127.0.0.1 on port 8080.
 
-                                        *instant-:InstantStopServer*
- :InstantStopServer     Stop the built-in server along with all its 
+                                        *blue_sentinel-:BlueSentinelStopServer*
+ :BlueSentinelStopServer     Stop the built-in server along with all its 
                         connections.
-                                        *instant-:InstantStartSingle*
- :InstantStartSingle {host} {port}
+                                        *blue_sentinel-:BlueSentinelStartSingle*
+ :BlueSentinelStartSingle {host} {port}
                         Join the server. The first client to connect should
                         use this command. Subsequent clients should use
-                        |:InstantJoinSingle|. This avoids unfortunate
+                        |:BlueSentinelJoinSingle|. This avoids unfortunate
                         buffer overwriting. It only shares the current buffer.
 
-                                        *instant-:InstantJoinSingle*
- :InstantJoinSingle {host} {port}
-                        Like |:InstantStartSingle| to join the server if there
+                                        *blue_sentinel-:BlueSentinelJoinSingle*
+ :BlueSentinelJoinSingle {host} {port}
+                        Like |:BlueSentinelStartSingle| to join the server if there
                         are already connected client(s).
 
-                                        *instant-:InstantStatus*
- :InstantStatus         Show the connection status.
+                                        *blue_sentinel-:BlueSentinelStatus*
+ :BlueSentinelStatus         Show the connection status.
 
-                                        *instant-:InstantFollow*
- :InstantFollow {username}
+                                        *blue_sentinel-:BlueSentinelFollow*
+ :BlueSentinelFollow {username}
                         Follow a user modifications specified by its
-                        {username}. To stop following use |:InstantStopFollow|
+                        {username}. To stop following use |:BlueSentinelStopFollow|
 
-                                        *instant-:InstantStopFollow*
- :InstantStopFollow     Stop following a user.
+                                        *blue_sentinel-:BlueSentinelStopFollow*
+ :BlueSentinelStopFollow     Stop following a user.
 
-                                        *instant-:InstantStartSession*
- :InstantStartSession {host} {port}
-                        Similar to |:InstantStartSingle| except it shares all
+                                        *blue_sentinel-:BlueSentinelStartSession*
+ :BlueSentinelStartSession {host} {port}
+                        Similar to |:BlueSentinelStartSingle| except it shares all
                         buffers and newly opened buffers.
 
-                                        *instant-:InstantJoinSession*
- :InstantJoinSession {host} {port}
-                        Join a session started with |:InstantStartSession| by 
+                                        *blue_sentinel-:BlueSentinelJoinSession*
+ :BlueSentinelJoinSession {host} {port}
+                        Join a session started with |:BlueSentinelStartSession| by 
                         a another client.
 
-                                        *instant-:InstantMark*
- :InstantMark           Mark a visually selected region. It sends the
+                                        *blue_sentinel-:BlueSentinelMark*
+ :BlueSentinelMark           Mark a visually selected region. It sends the
                         mark to other connected clients. If there are 
                         following clients , they will be transported to 
                         the mark.  It is useful to point out code regions 
                         to other clients.
 
-                                        *instant-:InstantMarkClear*
- :InstantMarkClear      Clears all marks.
+                                        *blue_sentinel-:BlueSentinelMarkClear*
+ :BlueSentinelMarkClear      Clears all marks.
 
-                                        *instant-:InstantOpenAll*
- :InstantOpenAll        Open all files in the current working directory. This
-                        can be used with |:InstantStartSingle| to share the
+                                        *blue_sentinel-:BlueSentinelOpenAll*
+ :BlueSentinelOpenAll        Open all files in the current working directory. This
+                        can be used with |:BlueSentinelStartSingle| to share the
                         whole directory.
 
-                                        *instant-:InstantSaveAll*
- :InstantSaveAll        Save all opened buffers. Unlike |:wall|, it also
+                                        *blue_sentinel-:BlueSentinelSaveAll*
+ :BlueSentinelSaveAll        Save all opened buffers. Unlike |:wall|, it also
                         creates missing subdirectories.
 
  vim:tw=78:et:ft=help:norl:
