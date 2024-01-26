@@ -89,9 +89,9 @@ if nodejs then
       if vim.startswith(data, "Server is listening") then
         vim.schedule(function()
           vim.fn.rpcrequest(client1, 'nvim_exec', "new hello world", false)
-          vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartSession 127.0.0.1 8080", false)
+          vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartSession 127.0.0.1 8080", false)
           vim.wait(1000)
-          vim.fn.rpcrequest(client2, 'nvim_exec', "InstantJoinSession 127.0.0.1 8080", false)
+          vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelJoinSession 127.0.0.1 8080", false)
           vim.wait(1000)
 
         end)
@@ -170,8 +170,8 @@ if nodejs then
             assertEq(content1[1], "AAA")
             assertEq(content1[2], "BBB")
 
-            vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStop", false)
-            vim.fn.rpcrequest(client2, 'nvim_exec', "InstantStop", false)
+            vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStop", false)
+            vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelStop", false)
             vim.fn.rpcrequest(client1, 'nvim_exec', "bufdo bwipeout! %", false)
             vim.fn.rpcrequest(client2, 'nvim_exec', "bufdo bwipeout! %", false)
 
@@ -214,13 +214,13 @@ if nodejs then
   handle_nvim2:kill()
 else
   vim.schedule(function()
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartServer", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartServer", false)
     vim.wait(1000)
 
     vim.fn.rpcrequest(client1, 'nvim_exec', "new hello world", false)
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStartSession 127.0.0.1 8080", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStartSession 127.0.0.1 8080", false)
     vim.wait(1000)
-    vim.fn.rpcrequest(client2, 'nvim_exec', "InstantJoinSession 127.0.0.1 8080", false)
+    vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelJoinSession 127.0.0.1 8080", false)
     vim.wait(1000)
 
     vim.wait(100)
@@ -290,13 +290,13 @@ else
     assertEq(content1[1], "AAA")
     assertEq(content1[2], "BBB")
 
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStop", false)
-    vim.fn.rpcrequest(client2, 'nvim_exec', "InstantStop", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStop", false)
+    vim.fn.rpcrequest(client2, 'nvim_exec', "BlueSentinelStop", false)
     vim.fn.rpcrequest(client1, 'nvim_exec', "bufdo bwipeout! %", false)
     vim.fn.rpcrequest(client2, 'nvim_exec', "bufdo bwipeout! %", false)
 
     vim.wait(1000)
-    vim.fn.rpcrequest(client1, 'nvim_exec', "InstantStopServer", false)
+    vim.fn.rpcrequest(client1, 'nvim_exec', "BlueSentinelStopServer", false)
     vim.wait(1000)
 
     vim.fn.chanclose(client2)

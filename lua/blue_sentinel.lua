@@ -1,4 +1,4 @@
-local websocket_client = require("instant.websocket_client")
+local websocket_client = require("blue_sentinel.websocket_client")
 local DetachFromBuffer
 local getConfig
 local findCharPositionBefore
@@ -13,7 +13,7 @@ local genPID
 local afterPID
 local SendOp
 local genPIDSeq
-local log
+local log = require("blue_sentinel.log")
 local api_attach = {}
 local api_attach_id = 1
 local attached = {}
@@ -51,12 +51,8 @@ local startpos, endpos = {{0, 0}}, {{MAXINT, 0}}
 allpids = {}
 local pids = {}
 local agent = 0
-local author = vim.api.nvim_get_var("instant_username")
+local author = vim.api.nvim_get_var("blue_sentinel_username")
 local ignores = {}
-local log_filename
-if vim.g.instant_log then
-  log_filename = vim.fn.stdpath("data") .. "/instant.log"
-end
 local MSG_TYPE = {
   TEXT       = 1,
   AVAILABLE  = 2,
@@ -333,9 +329,9 @@ local function attach_to_current_buffer(buf)
       end
     })
 
-    vim.api.nvim_buf_set_keymap(buf, 'n', 'u', '<cmd>lua require("instant").undo(' .. buf .. ')<CR>', {noremap = true})
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'u', '<cmd>lua require("blue_sentinel").undo(' .. buf .. ')<CR>', {noremap = true})
 
-    vim.api.nvim_buf_set_keymap(buf, 'n', '<C-r>', '<cmd>lua require("instant").redo(' .. buf .. ')<CR>', {noremap = true})
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<C-r>', '<cmd>lua require("blue_sentinel").redo(' .. buf .. ')<CR>', {noremap = true})
 
 
     if attach_success then
@@ -361,7 +357,7 @@ function getConfig(varname, default)
   return value
 end
 
-function instantOpenOrCreateBuffer(buf)
+function blueSentinelOpenOrCreateBuffer(buf)
   if (sessionshare and not received[buf]) then
     local fullname = vim.api.nvim_buf_get_name(buf)
     local cwdname = vim.api.nvim_call_function("fnamemodify",
@@ -714,41 +710,32 @@ function genPIDSeq(p, q, s, i, N)
   end
   return G
 end
-function log(str)
-  if log_filename then
-    local f = io.open(log_filename, "a")
-    if f then
-      f:write(str .. "\n")
-      f:close()
-    end
-  end
-end
 
 
 local function StartClient(first, appuri, port)
-  local v, username = pcall(function() return vim.api.nvim_get_var("instant_username") end)
+  local v, username = pcall(function() return vim.api.nvim_get_var("blue_sentinel_username") end)
   if not v then
-    error("Please specify a username in g:instant_username")
+    error("Please specify a username in g:blue_sentinel_username")
   end
 
   detach = {}
 
   vtextGroup = {
-    getConfig("instant_name_hl_group_user1", "CursorLineNr"),
-    getConfig("instant_name_hl_group_user2", "CursorLineNr"),
-    getConfig("instant_name_hl_group_user3", "CursorLineNr"),
-    getConfig("instant_name_hl_group_user4", "CursorLineNr"),
-    getConfig("instant_name_hl_group_default", "CursorLineNr")
+    getConfig("blue_sentinel_name_hl_group_user1", "CursorLineNr"),
+    getConfig("blue_sentinel_name_hl_group_user2", "CursorLineNr"),
+    getConfig("blue_sentinel_name_hl_group_user3", "CursorLineNr"),
+    getConfig("blue_sentinel_name_hl_group_user4", "CursorLineNr"),
+    getConfig("blue_sentinel_name_hl_group_default", "CursorLineNr")
   }
 
   old_namespace = {}
 
   cursorGroup = {
-    getConfig("instant_cursor_hl_group_user1", "Cursor"),
-    getConfig("instant_cursor_hl_group_user2", "Cursor"),
-    getConfig("instant_cursor_hl_group_user3", "Cursor"),
-    getConfig("instant_cursor_hl_group_user4", "Cursor"),
-    getConfig("instant_cursor_hl_group_default", "Cursor")
+    getConfig("blue_sentinel_cursor_hl_group_user1", "Cursor"),
+    getConfig("blue_sentinel_cursor_hl_group_user2", "Cursor"),
+    getConfig("blue_sentinel_cursor_hl_group_user3", "Cursor"),
+    getConfig("blue_sentinel_cursor_hl_group_user4", "Cursor"),
+    getConfig("blue_sentinel_cursor_hl_group_default", "Cursor")
   }
 
   cursors = {}
@@ -756,7 +743,7 @@ local function StartClient(first, appuri, port)
   loc2rem = {}
   rem2loc = {}
 
-  only_share_cwd = getConfig("g:instant_only_cwd", true)
+  only_share_cwd = getConfig("g:blue_sentinel_only_cwd", true)
 
   ws_client = websocket_client { uri = appuri, port = port }
   ws_client:connect {
@@ -1286,12 +1273,12 @@ local function StartClient(first, appuri, port)
 
             end
 
-            vim.api.nvim_command("augroup instantSession")
+            vim.api.nvim_command("augroup blueSentinelSession")
             vim.api.nvim_command("autocmd!")
             -- this is kind of messy
             -- a better way to write this
             -- would be great
-            vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua instantOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
+            vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua blueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
             vim.api.nvim_command("augroup end")
 
           elseif not is_first and not first then
@@ -1318,7 +1305,7 @@ local function StartClient(first, appuri, port)
 
               end
               cursors = {}
-              vim.api.nvim_command("augroup instantSession")
+              vim.api.nvim_command("augroup blueSentinelSession")
               vim.api.nvim_command("autocmd!")
               vim.api.nvim_command("augroup end")
 
@@ -1345,12 +1332,12 @@ local function StartClient(first, appuri, port)
               ws_client:send_text(encoded)
 
 
-              vim.api.nvim_command("augroup instantSession")
+              vim.api.nvim_command("augroup blueSentinelSession")
               vim.api.nvim_command("autocmd!")
               -- this is kind of messy
               -- a better way to write this
               -- would be great
-              vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua instantOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
+              vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua blueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
               vim.api.nvim_command("augroup end")
 
             end
@@ -1377,7 +1364,7 @@ local function StartClient(first, appuri, port)
 
             end
             cursors = {}
-            vim.api.nvim_command("augroup instantSession")
+            vim.api.nvim_command("augroup blueSentinelSession")
             vim.api.nvim_command("autocmd!")
             vim.api.nvim_command("augroup end")
 
@@ -1412,7 +1399,7 @@ local function StartClient(first, appuri, port)
 
             end
             cursors = {}
-            vim.api.nvim_command("augroup instantSession")
+            vim.api.nvim_command("augroup blueSentinelSession")
             vim.api.nvim_command("autocmd!")
             vim.api.nvim_command("augroup end")
 
@@ -1570,7 +1557,7 @@ local function StartClient(first, appuri, port)
 
       end
       cursors = {}
-      vim.api.nvim_command("augroup instantSession")
+      vim.api.nvim_command("augroup blueSentinelSession")
       vim.api.nvim_command("autocmd!")
       vim.api.nvim_command("augroup end")
 
@@ -1601,13 +1588,13 @@ end
 
 local function Start(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
-    vim.api.nvim_command("augroup instantUndo")
+    vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"instant".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1624,13 +1611,13 @@ end
 
 local function Join(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
-    vim.api.nvim_command("augroup instantUndo")
+    vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"instant".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1655,13 +1642,13 @@ end
 
 local function StartSession(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
-    vim.api.nvim_command("augroup instantUndo")
+    vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"instant".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1675,13 +1662,13 @@ end
 
 local function JoinSession(host, port)
   if ws_client and ws_client:is_active() then
-    error("Client is already connected. Use InstantStop first to disconnect.")
+    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
   end
 
   if not autocmd_init then
-    vim.api.nvim_command("augroup instantUndo")
+    vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"instant".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -2300,7 +2287,7 @@ local function attach(callbacks)
       o.on_data = callbacks.on_data
 
     else
-      error("[instant.nvim] Unknown callback " .. name)
+      error("[blue_sentinel] Unknown callback " .. name)
     end
   end
   api_attach[api_attach_id] = o
@@ -2310,7 +2297,7 @@ end
 
 local function detach(id)
   if not api_attach[id] then
-    error("[instant.nvim] Could not detach (already detached?")
+    error("[blue_sentinel] Could not detach (already detached?")
   end
   api_attach[id] = nil
 end

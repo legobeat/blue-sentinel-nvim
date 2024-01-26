@@ -11,18 +11,18 @@ function HasMessage(str)
 end
 
 function SendTestData()
-	require("instant").send_data("hello")
+	require("blue_sentinel").send_data("hello")
 end
 
 function GetConnectedList()
-	return require("instant").get_connected_list()
+	return require("blue_sentinel").get_connected_list()
 end
 
 function GetConnectedBufList()
-	return require("instant").get_connected_buf_list()
+	return require("blue_sentinel").get_connected_buf_list()
 end
 
-require("instant").attach {
+require("blue_sentinel").attach {
 	on_connect = function()
 		table.insert(msgs, "connect")
 	end,

@@ -1,5 +1,5 @@
-local base64 = require("instant.base64")
-local sha1 = require("instant.sha1")
+local base64 = require("blue_sentinel.base64")
+local sha1 = require("blue_sentinel.sha1")
 
 local conns = {}
 local conn_id = 100

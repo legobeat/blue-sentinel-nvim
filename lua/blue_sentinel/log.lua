@@ -1,6 +1,6 @@
 local log_filename
-if vim.g.debug_instant then
-  log_filename = vim.fn.stdpath('data') .. "/instant.log"
+if vim.g.debug_blue_sentinel then
+  log_filename = vim.fn.stdpath('data') .. "/blue_sentinel.log"
 end
 
 local log

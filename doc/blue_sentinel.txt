@@ -1,0 +1,78 @@
+blue_sentinel Collaborative editing in Neovim
+
+==============================================================================
+INTRODUCTION                            *blue_sentinel*
+
+`blue_sentinel` implements a client and server for collaborative text editing.
+
+CONFIGURATION                           *blue_sentinel-config*
+
+Specify your username in your configuration file.
+>
+ let g:blue_sentinel_username = "USERNAME"
+<
+
+COMMANDS                                *blue_sentinel-commands*
+
+                                        *blue_sentinel-:BlueSentinelStartServer*
+ :BlueSentinelStartServer {host} {port}
+                        Start the built-in server. Optionnally you can specify
+                        the {host} and {port}. By default the server will
+                        start on 127.0.0.1 on port 8080.
+
+                                        *blue_sentinel-:BlueSentinelStopServer*
+ :BlueSentinelStopServer     Stop the built-in server along with all its 
+                        connections.
+                                        *blue_sentinel-:BlueSentinelStartSingle*
+ :BlueSentinelStartSingle {host} {port}
+                        Join the server. The first client to connect should
+                        use this command. Subsequent clients should use
+                        |:BlueSentinelJoinSingle|. This avoids unfortunate
+                        buffer overwriting. It only shares the current buffer.
+
+                                        *blue_sentinel-:BlueSentinelJoinSingle*
+ :BlueSentinelJoinSingle {host} {port}
+                        Like |:BlueSentinelStartSingle| to join the server if there
+                        are already connected client(s).
+
+                                        *blue_sentinel-:BlueSentinelStatus*
+ :BlueSentinelStatus         Show the connection status.
+
+                                        *blue_sentinel-:BlueSentinelFollow*
+ :BlueSentinelFollow {username}
+                        Follow a user modifications specified by its
+                        {username}. To stop following use |:BlueSentinelStopFollow|
+
+                                        *blue_sentinel-:BlueSentinelStopFollow*
+ :BlueSentinelStopFollow     Stop following a user.
+
+                                        *blue_sentinel-:BlueSentinelStartSession*
+ :BlueSentinelStartSession {host} {port}
+                        Similar to |:BlueSentinelStartSingle| except it shares all
+                        buffers and newly opened buffers.
+
+                                        *blue_sentinel-:BlueSentinelJoinSession*
+ :BlueSentinelJoinSession {host} {port}
+                        Join a session started with |:BlueSentinelStartSession| by 
+                        a another client.
+
+                                        *blue_sentinel-:BlueSentinelMark*
+ :BlueSentinelMark           Mark a visually selected region. It sends the
+                        mark to other connected clients. If there are 
+                        following clients , they will be transported to 
+                        the mark.  It is useful to point out code regions 
+                        to other clients.
+
+                                        *blue_sentinel-:BlueSentinelMarkClear*
+ :BlueSentinelMarkClear      Clears all marks.
+
+                                        *blue_sentinel-:BlueSentinelOpenAll*
+ :BlueSentinelOpenAll        Open all files in the current working directory. This
+                        can be used with |:BlueSentinelStartSingle| to share the
+                        whole directory.
+
+                                        *blue_sentinel-:BlueSentinelSaveAll*
+ :BlueSentinelSaveAll        Save all opened buffers. Unlike |:wall|, it also
+                        creates missing subdirectories.
+
+ vim:tw=78:et:ft=help:norl:
