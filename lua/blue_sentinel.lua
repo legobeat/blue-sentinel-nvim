@@ -1,3 +1,4 @@
+local vim = vim
 local websocket_client = require("blue_sentinel.websocket_client")
 local DetachFromBuffer
 local getConfig
@@ -69,6 +70,248 @@ local OP_TYPE = {
   INS = 2,
 }
 
+local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
+  if detach[buf] then
+    detach[buf] = nil
+    return true
+  end
+
+  if ignores[buf][changedtick] then
+    ignores[buf][changedtick] = nil
+    return
+  end
+
+  prev = allprev[buf]
+  pids = allpids[buf]
+
+  local cur_lines = vim.api.nvim_buf_get_lines(buf, firstline, new_lastline, true)
+
+  local add_range = {
+    start_char = -1,
+    start_line = firstline,
+    end_char = -1,       -- at position there is \n
+    end_line = new_lastline
+  }
+
+  local del_range = {
+    start_char = -1,
+    start_line = firstline,
+    end_char = -1,
+    end_line = lastline,
+  }
+
+  while (add_range.end_line > add_range.start_line or (add_range.end_line == add_range.start_line and add_range.end_char >= add_range.start_char)) and
+    (del_range.end_line > del_range.start_line or (del_range.end_line == del_range.start_line and del_range.end_char >= del_range.start_char)) do
+    local c1, c2
+    if add_range.end_char == -1 then
+      c1 = "\n"
+    else
+      c1 = utf8char(cur_lines[add_range.end_line - firstline + 1] or "", add_range.end_char)
+    end
+
+    if del_range.end_char == -1 then
+      c2 = "\n"
+    else
+      c2 = utf8char(prev[del_range.end_line + 1] or "", del_range.end_char)
+    end
+
+    if c1 ~= c2 then
+      break
+    end
+
+    local add_prev, del_prev
+    if add_range.end_char == -1 then
+      add_prev = { end_line = add_range.end_line - 1, end_char = utf8len(cur_lines[add_range.end_line - firstline] or "") - 1 }
+    else
+      add_prev = { end_char = add_range.end_char - 1, end_line = add_range.end_line }
+    end
+
+    if del_range.end_char == -1 then
+      del_prev = { end_line = del_range.end_line - 1, end_char = utf8len(prev[del_range.end_line] or "") - 1 }
+    else
+      del_prev = { end_char = del_range.end_char - 1, end_line = del_range.end_line }
+    end
+
+    add_range.end_char, add_range.end_line = add_prev.end_char, add_prev.end_line
+    del_range.end_char, del_range.end_line = del_prev.end_char, del_prev.end_line
+  end
+
+  while (add_range.start_line < add_range.end_line or (add_range.start_line == add_range.end_line and add_range.start_char <= add_range.end_char)) and
+    (del_range.start_line < del_range.end_line or (del_range.start_line == del_range.end_line and del_range.start_char <= del_range.end_char)) do
+    local c1, c2
+    if add_range.start_char == -1 then
+      c1 = "\n"
+    else
+      c1 = utf8char(cur_lines[add_range.start_line - firstline + 1] or "", add_range.start_char)
+    end
+
+    if del_range.start_char == -1 then
+      c2 = "\n"
+    else
+      c2 = utf8char(prev[del_range.start_line + 1] or "", del_range.start_char)
+    end
+
+    if c1 ~= c2 then
+      break
+    end
+    add_range.start_char = add_range.start_char + 1
+    del_range.start_char = del_range.start_char + 1
+
+    if add_range.start_char == utf8len(cur_lines[add_range.start_line - firstline + 1] or "") then
+      add_range.start_char = -1
+      add_range.start_line = add_range.start_line + 1
+    end
+
+    if del_range.start_char == utf8len(prev[del_range.start_line + 1] or "") then
+      del_range.start_char = -1
+      del_range.start_line = del_range.start_line + 1
+    end
+  end
+
+
+  local endx = del_range.end_char
+  for y = del_range.end_line, del_range.start_line, -1 do
+    local startx = -1
+    if y == del_range.start_line then
+      startx = del_range.start_char
+    end
+
+    for x = endx, startx, -1 do
+      if x == -1 then
+        if #prev > 1 then
+          if y > 0 then
+            prev[y] = prev[y] .. (prev[y + 1] or "")
+          end
+          table.remove(prev, y + 1)
+
+          local del_pid = pids[y + 2][1]
+          for i, pid in ipairs(pids[y + 2]) do
+            if i > 1 then
+              table.insert(pids[y + 1], pid)
+            end
+          end
+          table.remove(pids, y + 2)
+
+          SendOp(buf, { OP_TYPE.DEL, "\n", del_pid })
+        end
+      else
+        local c = utf8char(prev[y + 1], x)
+
+        prev[y + 1] = utf8remove(prev[y + 1], x)
+
+        local del_pid = pids[y + 2][x + 2]
+        table.remove(pids[y + 2], x + 2)
+
+        SendOp(buf, { OP_TYPE.DEL, c, del_pid })
+      end
+    end
+    endx = utf8len(prev[y] or "") - 1
+  end
+
+  local len_insert = 0
+  local startx = add_range.start_char
+  for y = add_range.start_line, add_range.end_line do
+    local endx
+    if y == add_range.end_line then
+      endx = add_range.end_char
+    else
+      endx = utf8len(cur_lines[y - firstline + 1]) - 1
+    end
+
+    for x = startx, endx do
+      len_insert = len_insert + 1
+    end
+    startx = -1
+  end
+
+  local before_pid, after_pid
+  if add_range.start_char == -1 then
+    local pidx
+    local x, y = add_range.start_char, add_range.start_line
+    if cur_lines[y - firstline] then
+      pidx = utf8len(cur_lines[y - firstline]) + 1
+    else
+      pidx = #pids[y + 1]
+    end
+    before_pid = pids[y + 1][pidx]
+    after_pid = afterPID(pidx, y + 1)
+  else
+    local x, y = add_range.start_char, add_range.start_line
+    before_pid = pids[y + 2][x + 1]
+    after_pid = afterPID(x + 1, y + 2)
+  end
+
+  local newpidindex = 1
+  local newpids = genPIDSeq(before_pid, after_pid, agent, 1, len_insert)
+
+  local startx = add_range.start_char
+  for y = add_range.start_line, add_range.end_line do
+    local endx
+    if y == add_range.end_line then
+      endx = add_range.end_char
+    else
+      endx = utf8len(cur_lines[y - firstline + 1]) - 1
+    end
+
+    for x = startx, endx do
+      if x == -1 then
+        if cur_lines[y - firstline] then
+          local l, r = utf8split(prev[y], utf8len(cur_lines[y - firstline]))
+          prev[y] = l
+          table.insert(prev, y + 1, r)
+        else
+          table.insert(prev, y + 1, "")
+        end
+
+        local pidx
+        if cur_lines[y - firstline] then
+          pidx = utf8len(cur_lines[y - firstline]) + 1
+        else
+          pidx = #pids[y + 1]
+        end
+
+        local new_pid = newpids[newpidindex]
+        newpidindex = newpidindex + 1
+
+        local l, r = splitArray(pids[y + 1], pidx + 1)
+        pids[y + 1] = l
+        table.insert(r, 1, new_pid)
+        table.insert(pids, y + 2, r)
+
+        SendOp(buf, { OP_TYPE.INS, "\n", new_pid })
+      else
+        local c = utf8char(cur_lines[y - firstline + 1], x)
+        prev[y + 1] = utf8insert(prev[y + 1], x, c)
+
+        local new_pid = newpids[newpidindex]
+        newpidindex = newpidindex + 1
+
+        table.insert(pids[y + 2], x + 2, new_pid)
+
+        SendOp(buf, { OP_TYPE.INS, c, new_pid })
+      end
+    end
+    startx = -1
+  end
+
+  allprev[buf] = prev
+  allpids[buf] = pids
+
+  local mode = vim.api.nvim_call_function("mode", {})
+  local insert_mode = mode == "i"
+
+  if not insert_mode then
+    if #undoslice[buf] > 0 then
+      while undosp[buf] < #undostack[buf] do
+        table.remove(undostack[buf])       -- remove last element
+      end
+      table.insert(undostack[buf], undoslice[buf])
+      undosp[buf] = undosp[buf] + 1
+      undoslice[buf] = {}
+    end
+  end
+end
+
 local function attach_to_current_buffer(buf)
   attached[buf] = nil
 
@@ -83,247 +326,7 @@ local function attach_to_current_buffer(buf)
 
   if not attached[buf] then
     local attach_success = vim.api.nvim_buf_attach(buf, false, {
-      on_lines = function(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
-        if detach[buf] then
-          detach[buf] = nil
-          return true
-        end
-
-        if ignores[buf][changedtick] then
-          ignores[buf][changedtick] = nil
-          return
-        end
-
-
-        prev = allprev[buf]
-        pids = allpids[buf]
-
-        local cur_lines = vim.api.nvim_buf_get_lines(buf, firstline, new_lastline, true)
-
-        local add_range = {
-          sx = -1,
-          sy = firstline,
-          ex = -1, -- at position there is \n
-          ey = new_lastline
-        }
-
-        local del_range = {
-          sx = -1,
-          sy = firstline,
-          ex = -1,
-          ey = lastline,
-        }
-
-        while (add_range.ey > add_range.sy or (add_range.ey == add_range.sy and add_range.ex >= add_range.sx)) and
-          (del_range.ey > del_range.sy or (del_range.ey == del_range.sy and del_range.ex >= del_range.sx)) do
-
-          local c1, c2
-          if add_range.ex == -1 then c1 = "\n"
-          else c1 = utf8char(cur_lines[add_range.ey-firstline+1] or "", add_range.ex) end
-
-          if del_range.ex == -1 then c2 = "\n"
-          else c2 = utf8char(prev[del_range.ey+1] or "", del_range.ex) end
-
-          if c1 ~= c2 then
-            break
-          end
-
-          local add_prev, del_prev
-          if add_range.ex == -1 then
-            add_prev = { ey = add_range.ey-1, ex = utf8len(cur_lines[add_range.ey-firstline] or "")-1 }
-          else
-            add_prev = { ex = add_range.ex-1, ey = add_range.ey }
-          end
-
-          if del_range.ex == -1 then
-            del_prev = { ey = del_range.ey-1, ex = utf8len(prev[del_range.ey] or "")-1 }
-          else
-            del_prev = { ex = del_range.ex-1, ey = del_range.ey }
-          end
-
-          add_range.ex, add_range.ey = add_prev.ex, add_prev.ey
-          del_range.ex, del_range.ey = del_prev.ex, del_prev.ey
-        end
-
-        while (add_range.sy < add_range.ey or (add_range.sy == add_range.ey and add_range.sx <= add_range.ex)) and
-          (del_range.sy < del_range.ey or (del_range.sy == del_range.ey and del_range.sx <= del_range.ex)) do
-
-          local c1, c2
-          if add_range.sx == -1 then c1 = "\n"
-          else c1 = utf8char(cur_lines[add_range.sy-firstline+1] or "", add_range.sx) end
-
-          if del_range.sx == -1 then c2 = "\n"
-          else c2 = utf8char(prev[del_range.sy+1] or "", del_range.sx) end
-
-          if c1 ~= c2 then
-            break
-          end
-          add_range.sx = add_range.sx+1
-          del_range.sx = del_range.sx+1
-
-          if add_range.sx == utf8len(cur_lines[add_range.sy-firstline+1] or "") then
-            add_range.sx = -1
-            add_range.sy = add_range.sy + 1
-          end
-
-          if del_range.sx == utf8len(prev[del_range.sy+1] or "") then
-            del_range.sx = -1
-            del_range.sy = del_range.sy + 1
-          end
-
-        end
-
-
-        local endx = del_range.ex
-        for y=del_range.ey, del_range.sy,-1 do
-          local startx=-1
-          if y == del_range.sy then
-            startx = del_range.sx
-          end
-
-          for x=endx,startx,-1 do
-            if x == -1 then
-              if #prev > 1 then
-                if y > 0 then
-                  prev[y] = prev[y] .. (prev[y+1] or "")
-                end
-                table.remove(prev, y+1)
-
-                local del_pid = pids[y+2][1]
-                for i,pid in ipairs(pids[y+2]) do
-                  if i > 1 then
-                    table.insert(pids[y+1], pid)
-                  end
-                end
-                table.remove(pids, y+2)
-
-                SendOp(buf, { OP_TYPE.DEL, "\n", del_pid })
-
-              end
-            else
-              local c = utf8char(prev[y+1], x)
-
-              prev[y+1] = utf8remove(prev[y+1], x)
-
-              local del_pid = pids[y+2][x+2]
-              table.remove(pids[y+2], x+2)
-
-              SendOp(buf, { OP_TYPE.DEL, c, del_pid })
-
-            end
-          end
-          endx = utf8len(prev[y] or "")-1
-        end
-
-        local len_insert = 0
-        local startx = add_range.sx
-        for y=add_range.sy, add_range.ey do
-          local endx
-          if y == add_range.ey then
-            endx = add_range.ex
-          else
-            endx = utf8len(cur_lines[y-firstline+1])-1
-          end
-
-          for x=startx,endx do
-            len_insert = len_insert + 1
-          end
-          startx = -1
-        end
-
-        local before_pid, after_pid
-        if add_range.sx == -1 then
-          local pidx
-          local x, y = add_range.sx, add_range.sy
-          if cur_lines[y-firstline] then
-            pidx = utf8len(cur_lines[y-firstline])+1
-          else
-            pidx = #pids[y+1]
-          end
-          before_pid = pids[y+1][pidx]
-          after_pid = afterPID(pidx, y+1)
-
-        else
-          local x, y = add_range.sx, add_range.sy
-          before_pid = pids[y+2][x+1]
-          after_pid = afterPID(x+1, y+2)
-
-        end
-
-        local newpidindex = 1
-        local newpids = genPIDSeq(before_pid, after_pid, agent, 1, len_insert)
-
-        local startx = add_range.sx
-        for y=add_range.sy, add_range.ey do
-          local endx
-          if y == add_range.ey then
-            endx = add_range.ex
-          else
-            endx = utf8len(cur_lines[y-firstline+1])-1
-          end
-
-          for x=startx,endx do
-            if x == -1 then
-              if cur_lines[y-firstline] then
-                local l, r = utf8split(prev[y], utf8len(cur_lines[y-firstline]))
-                prev[y] = l
-                table.insert(prev, y+1, r)
-              else
-                table.insert(prev, y+1, "")
-              end
-
-              local pidx
-              if cur_lines[y-firstline] then
-                pidx = utf8len(cur_lines[y-firstline])+1
-              else
-                pidx = #pids[y+1]
-              end
-
-              local new_pid = newpids[newpidindex]
-              newpidindex = newpidindex + 1
-
-              local l, r = splitArray(pids[y+1], pidx+1)
-              pids[y+1] = l
-              table.insert(r, 1, new_pid)
-              table.insert(pids, y+2, r)
-
-              SendOp(buf, { OP_TYPE.INS, "\n", new_pid })
-
-            else
-              local c = utf8char(cur_lines[y-firstline+1], x)
-              prev[y+1] = utf8insert(prev[y+1], x, c)
-
-              local new_pid = newpids[newpidindex]
-              newpidindex = newpidindex + 1
-
-              table.insert(pids[y+2], x+2, new_pid)
-
-              SendOp(buf, { OP_TYPE.INS, c, new_pid })
-
-            end
-          end
-          startx = -1
-        end
-
-        allprev[buf] = prev
-        allpids[buf] = pids
-
-        local mode = vim.api.nvim_call_function("mode", {})
-        local insert_mode = mode == "i"
-
-        if not insert_mode then
-          if #undoslice[buf] > 0 then
-            while undosp[buf] < #undostack[buf] do
-              table.remove(undostack[buf]) -- remove last element
-            end
-            table.insert(undostack[buf], undoslice[buf])
-            undosp[buf] = undosp[buf] + 1
-            undoslice[buf] = {}
-          end
-
-        end
-
-      end,
+      on_lines = on_lines,
       on_detach = function(_, buf)
         attached[buf] = nil
       end
