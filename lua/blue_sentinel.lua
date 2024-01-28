@@ -91,7 +91,6 @@ local function findPIDBefore(opid)
     return app_state.pids[y][x - 1]
   end
 end
-
 -- }}}
 
 function SendOp(buf, op)
@@ -114,7 +113,7 @@ function SendOp(buf, op)
   app_state.ws_client:send_text(encoded)
 end
 
-local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
+local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, _bytecount)
   if app_state.detach[buf] then
     app_state.detach[buf] = nil
     return true
@@ -766,62 +765,62 @@ local function StartClient(first, appuri, port)
           end
           app_state.allprev[buf] = app_state.prev
           app_state.allpids[buf] = app_state.pids
-          local aut = app_state.id2author[other_agent]
+          local author = app_state.id2author[other_agent]
 
           if lastPID and other_agent ~= app_state.agent then
             local x, y = findCharPositionExact(lastPID)
 
-            if app_state.old_namespace[aut] then
-              if app_state.attached[app_state.old_namespace[aut].buf] then
+            if app_state.old_namespace[author] then
+              if app_state.attached[app_state.old_namespace[author].buf] then
                 vim.api.nvim_buf_clear_namespace(
-                  app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+                  app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
                   0, -1)
               end
-              app_state.old_namespace[aut] = nil
+              app_state.old_namespace[author] = nil
             end
 
-            if app_state.cursors[aut] then
-              if app_state.attached[app_state.cursors[aut].buf] then
+            if app_state.cursors[author] then
+              if app_state.attached[app_state.cursors[author].buf] then
                 vim.api.nvim_buf_clear_namespace(
-                  app_state.cursors[aut].buf, app_state.cursors[aut].id,
+                  app_state.cursors[author].buf, app_state.cursors[author].id,
                   0, -1)
               end
-              app_state.cursors[aut] = nil
+              app_state.cursors[author] = nil
             end
 
             if x then
               if x == 1 then x = 2 end
-              app_state.old_namespace[aut] = {
-                id = vim.api.nvim_create_namespace(aut),
+              app_state.old_namespace[author] = {
+                id = vim.api.nvim_create_namespace(author),
                 buf = buf,
               }
               vim.api.nvim_buf_set_extmark(
                 buf,
-                app_state.old_namespace[aut].id,
+                app_state.old_namespace[author].id,
                 math.max(y - 2, 0),
                 0,
                 {
-                  virt_text = { { aut, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
+                  virt_text = { { author, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
                   virt_text_pos = "right_align"
                 }
               )
 
               if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
                 local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
-                app_state.cursors[aut] = {
+                app_state.cursors[author] = {
                   id = vim.api.nvim_buf_add_highlight(buf,
                     0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
                   buf = buf,
                   line = y - 2,
                 }
                 if vim.api.nvim_buf_set_extmark then
-                  app_state.cursors[aut].ext_id =
+                  app_state.cursors[author].ext_id =
                       vim.api.nvim_buf_set_extmark(
-                        buf, app_state.cursors[aut].id, y - 2, bx, {})
+                        buf, app_state.cursors[author].id, y - 2, bx, {})
                 end
               end
             end
-            if app_state.follow and app_state.follow_aut == aut then
+            if app_state.follow and app_state.follow_aut == author then
               local curbuf = vim.api.nvim_get_current_buf()
               if curbuf ~= buf then
                 vim.api.nvim_set_current_buf(buf)
@@ -833,7 +832,7 @@ local function StartClient(first, appuri, port)
 
             for _, o in pairs(app_state.api_attach) do
               if o.on_change then
-                o.on_change(aut, buf, y - 2)
+                o.on_change(author, buf, y - 2)
               end
             end
           end
@@ -1162,23 +1161,23 @@ local function StartClient(first, appuri, port)
           elseif not is_first and not first then
             if is_sessionshare ~= app_state.sessionshare then
               print("ERROR: Share mode client server mismatch (session mode, single buffer mode)")
-              for aut, _ in pairs(app_state.cursors) do
-                if app_state.cursors[aut] then
-                  if app_state.attached[app_state.cursors[aut].buf] then
+              for author, _ in pairs(app_state.cursors) do
+                if app_state.cursors[author] then
+                  if app_state.attached[app_state.cursors[author].buf] then
                     vim.api.nvim_buf_clear_namespace(
-                      app_state.cursors[aut].buf, app_state.cursors[aut].id,
+                      app_state.cursors[author].buf, app_state.cursors[author].id,
                       0, -1)
                   end
-                  app_state.cursors[aut] = nil
+                  app_state.cursors[author] = nil
                 end
 
-                if app_state.old_namespace[aut] then
-                  if app_state.attached[app_state.old_namespace[aut].buf] then
+                if app_state.old_namespace[author] then
+                  if app_state.attached[app_state.old_namespace[author].buf] then
                     vim.api.nvim_buf_clear_namespace(
-                      app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+                      app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
                       0, -1)
                   end
-                  app_state.old_namespace[aut] = nil
+                  app_state.old_namespace[author] = nil
                 end
               end
               app_state.cursors = {}
@@ -1220,23 +1219,23 @@ local function StartClient(first, appuri, port)
             end
           elseif is_first and not first then
             print("ERROR: Tried to join an empty server")
-            for aut, _ in pairs(app_state.cursors) do
-              if app_state.cursors[aut] then
-                if app_state.attached[app_state.cursors[aut].buf] then
+            for author, _ in pairs(app_state.cursors) do
+              if app_state.cursors[author] then
+                if app_state.attached[app_state.cursors[author].buf] then
                   vim.api.nvim_buf_clear_namespace(
-                    app_state.cursors[aut].buf, app_state.cursors[aut].id,
+                    app_state.cursors[author].buf, app_state.cursors[author].id,
                     0, -1)
                 end
-                app_state.cursors[aut] = nil
+                app_state.cursors[author] = nil
               end
 
-              if app_state.old_namespace[aut] then
-                if app_state.attached[app_state.old_namespace[aut].buf] then
+              if app_state.old_namespace[author] then
+                if app_state.attached[app_state.old_namespace[author].buf] then
                   vim.api.nvim_buf_clear_namespace(
-                    app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+                    app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
                     0, -1)
                 end
-                app_state.old_namespace[aut] = nil
+                app_state.old_namespace[author] = nil
               end
             end
             app_state.cursors = {}
@@ -1254,23 +1253,23 @@ local function StartClient(first, appuri, port)
             app_state.agent = 0
           elseif not is_first and first then
             print("ERROR: Tried to start a server which is already busy")
-            for aut, _ in pairs(app_state.cursors) do
-              if app_state.cursors[aut] then
-                if app_state.attached[app_state.cursors[aut].buf] then
+            for author, _ in pairs(app_state.cursors) do
+              if app_state.cursors[author] then
+                if app_state.attached[app_state.cursors[author].buf] then
                   vim.api.nvim_buf_clear_namespace(
-                    app_state.cursors[aut].buf, app_state.cursors[aut].id,
+                    app_state.cursors[author].buf, app_state.cursors[author].id,
                     0, -1)
                 end
-                app_state.cursors[aut] = nil
+                app_state.cursors[author] = nil
               end
 
-              if app_state.old_namespace[aut] then
-                if app_state.attached[app_state.old_namespace[aut].buf] then
+              if app_state.old_namespace[author] then
+                if app_state.attached[app_state.old_namespace[author].buf] then
                   vim.api.nvim_buf_clear_namespace(
-                    app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+                    app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
                     0, -1)
                 end
-                app_state.old_namespace[aut] = nil
+                app_state.old_namespace[author] = nil
               end
             end
             app_state.cursors = {}
@@ -1312,8 +1311,8 @@ local function StartClient(first, appuri, port)
 
         if decoded[1] == MSG_TYPE.DISCONNECT then
           local _, remove_id = unpack(decoded)
-          local aut = app_state.id2author[remove_id]
-          if aut then
+          local author = app_state.id2author[remove_id]
+          if author then
             app_state.id2author[remove_id] = nil
             if app_state.client_hl_group[remove_id] ~= 5 then -- 5 means default hl group (there are four predefined)
               app_state.hl_group[app_state.client_hl_group[remove_id]] = nil
@@ -1322,7 +1321,7 @@ local function StartClient(first, appuri, port)
 
             for _, o in pairs(app_state.api_attach) do
               if o.on_clientdisconnected then
-                o.on_clientdisconnected(aut)
+                o.on_clientdisconnected(author)
               end
             end
           end
@@ -1377,10 +1376,10 @@ local function StartClient(first, appuri, port)
               y - 1, lscol, lecol)
           end
 
-          local aut = app_state.id2author[other_agent]
+          local author = app_state.id2author[other_agent]
 
-          app_state.old_namespace[aut] = {
-            id = vim.api.nvim_create_namespace(aut),
+          app_state.old_namespace[author] = {
+            id = vim.api.nvim_create_namespace(author),
             buf = buf,
           }
 
@@ -1390,12 +1389,12 @@ local function StartClient(first, appuri, port)
             sy - 2,
             0,
             {
-              virt_text = { { aut, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
+              virt_text = { { author, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
               virt_text_pos = "right_align"
             }
           )
 
-          if app_state.follow and app_state.follow_aut == aut then
+          if app_state.follow and app_state.follow_aut == author then
             local curbuf = vim.api.nvim_get_current_buf()
             if curbuf ~= buf then
               vim.api.nvim_set_current_buf(buf)
@@ -1410,23 +1409,23 @@ local function StartClient(first, appuri, port)
       end
     end,
     on_disconnect = function()
-      for aut, _ in pairs(app_state.cursors) do
-        if app_state.cursors[aut] then
-          if app_state.attached[app_state.cursors[aut].buf] then
+      for author, _ in pairs(app_state.cursors) do
+        if app_state.cursors[author] then
+          if app_state.attached[app_state.cursors[author].buf] then
             vim.api.nvim_buf_clear_namespace(
-              app_state.cursors[aut].buf, app_state.cursors[aut].id,
+              app_state.cursors[author].buf, app_state.cursors[author].id,
               0, -1)
           end
-          app_state.cursors[aut] = nil
+          app_state.cursors[author] = nil
         end
 
-        if app_state.old_namespace[aut] then
-          if app_state.attached[app_state.old_namespace[aut].buf] then
+        if app_state.old_namespace[author] then
+          if app_state.attached[app_state.old_namespace[author].buf] then
             vim.api.nvim_buf_clear_namespace(
-              app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+              app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
               0, -1)
           end
-          app_state.old_namespace[aut] = nil
+          app_state.old_namespace[author] = nil
         end
       end
       app_state.cursors = {}
@@ -1452,7 +1451,6 @@ local function StartClient(first, appuri, port)
     end
   }
 end
-
 
 function DetachFromBuffer(bufnr)
   app_state.detach[bufnr] = true
@@ -1507,7 +1505,6 @@ local function Stop()
   app_state.ws_client = nil
 end
 
-
 local function StartSession(host, port)
   if app_state.ws_client and app_state.ws_client:is_active() then
     error("Client is already connected. Use BlueSentinelStop first to disconnect.")
@@ -1546,12 +1543,11 @@ local function JoinSession(host, port)
   StartClient(first, host, port)
 end
 
-
 local function Status()
   if app_state.ws_client and app_state.ws_client:is_active() then
     local positions = {}
-    for _, aut in pairs(app_state.id2author) do
-      local c = app_state.cursors[aut]
+    for _, author in pairs(app_state.id2author) do
+      local c = app_state.cursors[author]
       if c then
         local buf = c.buf
         local fullname = vim.api.nvim_buf_get_name(buf)
@@ -1571,9 +1567,9 @@ local function Status()
           line = c.y
         end
 
-        table.insert(positions, { aut, bufname, line + 1 })
+        table.insert(positions, { author, bufname, line + 1 })
       else
-        table.insert(positions, { aut, "", "" })
+        table.insert(positions, { author, "", "" })
       end
     end
 
@@ -1587,10 +1583,10 @@ local function Status()
   end
 end
 
-local function StartFollow(aut)
+local function StartFollow(author)
   app_state.follow = true
-  app_state.follow_aut = aut
-  print("Following " .. aut)
+  app_state.follow_aut = author
+  print("Following " .. author)
 end
 
 local function StopFollow()
@@ -1800,62 +1796,62 @@ local function undo(buf)
     end
     app_state.allprev[buf] = app_state.prev
     app_state.allpids[buf] = app_state.pids
-    local aut = app_state.id2author[other_agent]
+    local author = app_state.id2author[other_agent]
 
     if lastPID and other_agent ~= app_state.agent then
       local x, y = findCharPositionExact(lastPID)
 
-      if app_state.old_namespace[aut] then
-        if app_state.attached[app_state.old_namespace[aut].buf] then
+      if app_state.old_namespace[author] then
+        if app_state.attached[app_state.old_namespace[author].buf] then
           vim.api.nvim_buf_clear_namespace(
-            app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+            app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
             0, -1)
         end
-        app_state.old_namespace[aut] = nil
+        app_state.old_namespace[author] = nil
       end
 
-      if app_state.cursors[aut] then
-        if app_state.attached[app_state.cursors[aut].buf] then
+      if app_state.cursors[author] then
+        if app_state.attached[app_state.cursors[author].buf] then
           vim.api.nvim_buf_clear_namespace(
-            app_state.cursors[aut].buf, app_state.cursors[aut].id,
+            app_state.cursors[author].buf, app_state.cursors[author].id,
             0, -1)
         end
-        app_state.cursors[aut] = nil
+        app_state.cursors[author] = nil
       end
 
       if x then
         if x == 1 then x = 2 end
-        app_state.old_namespace[aut] = {
-          id = vim.api.nvim_create_namespace(aut),
+        app_state.old_namespace[author] = {
+          id = vim.api.nvim_create_namespace(author),
           buf = buf,
         }
         vim.api.nvim_buf_set_extmark(
           buf,
-          app_state.old_namespace[aut].id,
+          app_state.old_namespace[author].id,
           math.max(y - 2, 0),
           0,
           {
-            virt_text = { { aut, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
+            virt_text = { { author, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
             virt_text_pos = "right_align"
           }
         )
 
         if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
           local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
-          app_state.cursors[aut] = {
+          app_state.cursors[author] = {
             id = vim.api.nvim_buf_add_highlight(buf,
               0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
             buf = buf,
             line = y - 2,
           }
           if vim.api.nvim_buf_set_extmark then
-            app_state.cursors[aut].ext_id =
+            app_state.cursors[author].ext_id =
                 vim.api.nvim_buf_set_extmark(
-                  buf, app_state.cursors[aut].id, y - 2, bx, {})
+                  buf, app_state.cursors[author].id, y - 2, bx, {})
           end
         end
       end
-      if app_state.follow and app_state.follow_aut == aut then
+      if app_state.follow and app_state.follow_aut == author then
         local curbuf = vim.api.nvim_get_current_buf()
         if curbuf ~= buf then
           vim.api.nvim_set_current_buf(buf)
@@ -1867,7 +1863,7 @@ local function undo(buf)
 
       for _, o in pairs(app_state.api_attach) do
         if o.on_change then
-          o.on_change(aut, buf, y - 2)
+          o.on_change(author, buf, y - 2)
         end
       end
     end
@@ -2026,62 +2022,62 @@ local function redo(buf)
     end
     app_state.allprev[buf] = app_state.prev
     app_state.allpids[buf] = app_state.pids
-    local aut = app_state.id2author[other_agent]
+    local author = app_state.id2author[other_agent]
 
     if lastPID and other_agent ~= app_state.agent then
       local x, y = findCharPositionExact(lastPID)
 
-      if app_state.old_namespace[aut] then
-        if app_state.attached[app_state.old_namespace[aut].buf] then
+      if app_state.old_namespace[author] then
+        if app_state.attached[app_state.old_namespace[author].buf] then
           vim.api.nvim_buf_clear_namespace(
-            app_state.old_namespace[aut].buf, app_state.old_namespace[aut].id,
+            app_state.old_namespace[author].buf, app_state.old_namespace[author].id,
             0, -1)
         end
-        app_state.old_namespace[aut] = nil
+        app_state.old_namespace[author] = nil
       end
 
-      if app_state.cursors[aut] then
-        if app_state.attached[app_state.cursors[aut].buf] then
+      if app_state.cursors[author] then
+        if app_state.attached[app_state.cursors[author].buf] then
           vim.api.nvim_buf_clear_namespace(
-            app_state.cursors[aut].buf, app_state.cursors[aut].id,
+            app_state.cursors[author].buf, app_state.cursors[author].id,
             0, -1)
         end
-        app_state.cursors[aut] = nil
+        app_state.cursors[author] = nil
       end
 
       if x then
         if x == 1 then x = 2 end
-        app_state.old_namespace[aut] = {
-          id = vim.api.nvim_create_namespace(aut),
+        app_state.old_namespace[author] = {
+          id = vim.api.nvim_create_namespace(author),
           buf = buf,
         }
         vim.api.nvim_buf_set_extmark(
           buf,
-          app_state.old_namespace[aut].id,
+          app_state.old_namespace[author].id,
           math.max(y - 2, 0),
           0,
           {
-            virt_text = { { aut, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
+            virt_text = { { author, app_state.vtextGroup[app_state.client_hl_group[other_agent]] } },
             virt_text_pos = "right_align"
           }
         )
 
         if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
           local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
-          app_state.cursors[aut] = {
+          app_state.cursors[author] = {
             id = vim.api.nvim_buf_add_highlight(buf,
               0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
             buf = buf,
             line = y - 2,
           }
           if vim.api.nvim_buf_set_extmark then
-            app_state.cursors[aut].ext_id =
+            app_state.cursors[author].ext_id =
                 vim.api.nvim_buf_set_extmark(
-                  buf, app_state.cursors[aut].id, y - 2, bx, {})
+                  buf, app_state.cursors[author].id, y - 2, bx, {})
           end
         end
       end
-      if app_state.follow and app_state.follow_aut == aut then
+      if app_state.follow and app_state.follow_aut == author then
         local curbuf = vim.api.nvim_get_current_buf()
         if curbuf ~= buf then
           vim.api.nvim_set_current_buf(buf)
@@ -2093,7 +2089,7 @@ local function redo(buf)
 
       for _, o in pairs(app_state.api_attach) do
         if o.on_change then
-          o.on_change(aut, buf, y - 2)
+          o.on_change(author, buf, y - 2)
         end
       end
     end
@@ -2111,7 +2107,6 @@ local function redo(buf)
     end
   end
 end
-
 
 local function attach(callbacks)
   local o = {}
@@ -2146,8 +2141,8 @@ end
 
 local function get_connected_list()
   local connected = {}
-  for _, aut in pairs(app_state.id2author) do
-    table.insert(connected, aut)
+  for _, author in pairs(app_state.id2author) do
+    table.insert(connected, author)
   end
   return connected
 end
@@ -2169,7 +2164,6 @@ local function get_connected_buf_list()
   end
   return bufs
 end
-
 
 return {
   Join = Join,
