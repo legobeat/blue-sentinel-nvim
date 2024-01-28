@@ -24,5 +24,11 @@ function M.remove(str, i)
 
   return string.sub(str, 1, s1) .. string.sub(str, s2+1)
 end
+
+function M.split(str, i)
+  local s1 = vim.str_byteindex(str, i)
+  return string.sub(str, 1, s1), string.sub(str, s1+1)
+end
+
 return M
 

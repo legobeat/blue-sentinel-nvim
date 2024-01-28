@@ -25,7 +25,7 @@ end
 function nocase (s)
   s = string.gsub(s, "%a", function (c)
     if string.match(c, "[a-zA-Z]") then
-      return string.format("[%s%s]", 
+      return string.format("[%s%s]",
         string.lower(c),
         string.upper(c))
     else
@@ -80,7 +80,7 @@ local function WebSocketClient(opt)
 
   local ws = {}
   function ws:connect(callbacks)
-    local ret, err = client:connect(ipentry.addr, port, vim.schedule_wrap(function(err) 
+    local ret, err = client:connect(ipentry.addr, port, vim.schedule_wrap(function(err)
       on_disconnect = callbacks.on_disconnect
 
       if err then
@@ -89,7 +89,6 @@ local function WebSocketClient(opt)
         end
 
         error("There was an error during connection: " .. err)
-        return
       end
 
       local function getdata(amount)
@@ -106,7 +105,7 @@ local function WebSocketClient(opt)
           local wsdata = ""
           local fin
 
-          local rec = getdata(2) 
+          local rec = getdata(2)
           local b1 = string.byte(string.sub(rec,1,1))
           local b2 = string.byte(string.sub(rec,2,2))
           local opcode = bit.band(b1, 0xF)
@@ -123,18 +122,18 @@ local function WebSocketClient(opt)
             paylen = 0
             local rec = getdata(8)
             for i=1,8 do -- 64 bits length
-              paylen = bit.lshift(paylen, 8) 
+              paylen = bit.lshift(paylen, 8)
               paylen = paylen + string.byte(string.sub(rec,i,i))
             end
           end
 
           local data = getdata(paylen)
 
-          
+
           wsdata = data
 
           while fin == 0 do
-            local rec = getdata(2) 
+            local rec = getdata(2)
             local b1 = string.byte(string.sub(rec,1,1))
             local b2 = string.byte(string.sub(rec,2,2))
             fin = bit.rshift(b1, 7)
@@ -149,7 +148,7 @@ local function WebSocketClient(opt)
               paylen = 0
               local rec = getdata(8)
               for i=1,8 do -- 64 bits length
-                paylen = bit.lshift(paylen, 8) 
+                paylen = bit.lshift(paylen, 8)
                 paylen = paylen + string.byte(string.sub(rec,i,i))
               end
             end
@@ -178,7 +177,7 @@ local function WebSocketClient(opt)
               paylen = 0
               local rec = getdata(8)
               for i=1,8 do -- 64 bits length
-                paylen = bit.lshift(paylen, 8) 
+                paylen = bit.lshift(paylen, 8)
                 paylen = paylen + string.byte(string.sub(rec,i,i))
               end
             end
@@ -191,7 +190,7 @@ local function WebSocketClient(opt)
             local frame = {
               0x8A, 0x80,
             }
-            for i=1,4 do 
+            for i=1,4 do
               table.insert(frame, mask[i])
             end
             local s = convert_bytes_to_string(frame)
@@ -211,7 +210,6 @@ local function WebSocketClient(opt)
           end
 
           error("There was an error during connection: " .. err)
-          return
         end
 
         if chunk then
@@ -262,7 +260,7 @@ local function WebSocketClient(opt)
     local frame = {
       0x88, 0x80,
     }
-    for i=1,4 do 
+    for i=1,4 do
       table.insert(frame, mask[i])
     end
     local s = convert_bytes_to_string(frame)

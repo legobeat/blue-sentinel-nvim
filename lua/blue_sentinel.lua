@@ -4,12 +4,8 @@ local DetachFromBuffer
 local getConfig
 local findCharPositionBefore
 local splitArray
-local utf8split
 local isPIDEqual
 local isLowerOrEqual
-local utf8len, utf8char
-local utf8insert
-local utf8remove
 local genPID
 local afterPID
 local SendOp
@@ -70,6 +66,8 @@ local OP_TYPE = {
   INS = 2,
 }
 
+local utf8 = require("blue_sentinel.utf8")
+
 local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
   if detach[buf] then
     detach[buf] = nil
@@ -106,13 +104,13 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     if add_range.end_char == -1 then
       c1 = "\n"
     else
-      c1 = utf8char(cur_lines[add_range.end_line - firstline + 1] or "", add_range.end_char)
+      c1 = utf8.char(cur_lines[add_range.end_line - firstline + 1] or "", add_range.end_char)
     end
 
     if del_range.end_char == -1 then
       c2 = "\n"
     else
-      c2 = utf8char(prev[del_range.end_line + 1] or "", del_range.end_char)
+      c2 = utf8.char(prev[del_range.end_line + 1] or "", del_range.end_char)
     end
 
     if c1 ~= c2 then
@@ -121,13 +119,13 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
 
     local add_prev, del_prev
     if add_range.end_char == -1 then
-      add_prev = { end_line = add_range.end_line - 1, end_char = utf8len(cur_lines[add_range.end_line - firstline] or "") - 1 }
+      add_prev = { end_line = add_range.end_line - 1, end_char = utf8.len(cur_lines[add_range.end_line - firstline] or "") - 1 }
     else
       add_prev = { end_char = add_range.end_char - 1, end_line = add_range.end_line }
     end
 
     if del_range.end_char == -1 then
-      del_prev = { end_line = del_range.end_line - 1, end_char = utf8len(prev[del_range.end_line] or "") - 1 }
+      del_prev = { end_line = del_range.end_line - 1, end_char = utf8.len(prev[del_range.end_line] or "") - 1 }
     else
       del_prev = { end_char = del_range.end_char - 1, end_line = del_range.end_line }
     end
@@ -142,13 +140,13 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     if add_range.start_char == -1 then
       c1 = "\n"
     else
-      c1 = utf8char(cur_lines[add_range.start_line - firstline + 1] or "", add_range.start_char)
+      c1 = utf8.char(cur_lines[add_range.start_line - firstline + 1] or "", add_range.start_char)
     end
 
     if del_range.start_char == -1 then
       c2 = "\n"
     else
-      c2 = utf8char(prev[del_range.start_line + 1] or "", del_range.start_char)
+      c2 = utf8.char(prev[del_range.start_line + 1] or "", del_range.start_char)
     end
 
     if c1 ~= c2 then
@@ -157,12 +155,12 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     add_range.start_char = add_range.start_char + 1
     del_range.start_char = del_range.start_char + 1
 
-    if add_range.start_char == utf8len(cur_lines[add_range.start_line - firstline + 1] or "") then
+    if add_range.start_char == utf8.len(cur_lines[add_range.start_line - firstline + 1] or "") then
       add_range.start_char = -1
       add_range.start_line = add_range.start_line + 1
     end
 
-    if del_range.start_char == utf8len(prev[del_range.start_line + 1] or "") then
+    if del_range.start_char == utf8.len(prev[del_range.start_line + 1] or "") then
       del_range.start_char = -1
       del_range.start_line = del_range.start_line + 1
     end
@@ -195,9 +193,9 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
           SendOp(buf, { OP_TYPE.DEL, "\n", del_pid })
         end
       else
-        local c = utf8char(prev[y + 1], x)
+        local c = utf8.char(prev[y + 1], x)
 
-        prev[y + 1] = utf8remove(prev[y + 1], x)
+        prev[y + 1] = utf8.remove(prev[y + 1], x)
 
         local del_pid = pids[y + 2][x + 2]
         table.remove(pids[y + 2], x + 2)
@@ -205,7 +203,7 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
         SendOp(buf, { OP_TYPE.DEL, c, del_pid })
       end
     end
-    endx = utf8len(prev[y] or "") - 1
+    endx = utf8.len(prev[y] or "") - 1
   end
 
   local len_insert = 0
@@ -215,7 +213,7 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     if y == add_range.end_line then
       endx = add_range.end_char
     else
-      endx = utf8len(cur_lines[y - firstline + 1]) - 1
+      endx = utf8.len(cur_lines[y - firstline + 1]) - 1
     end
 
     for x = startx, endx do
@@ -229,7 +227,7 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     local pidx
     local x, y = add_range.start_char, add_range.start_line
     if cur_lines[y - firstline] then
-      pidx = utf8len(cur_lines[y - firstline]) + 1
+      pidx = utf8.len(cur_lines[y - firstline]) + 1
     else
       pidx = #pids[y + 1]
     end
@@ -250,13 +248,13 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     if y == add_range.end_line then
       endx = add_range.end_char
     else
-      endx = utf8len(cur_lines[y - firstline + 1]) - 1
+      endx = utf8.len(cur_lines[y - firstline + 1]) - 1
     end
 
     for x = startx, endx do
       if x == -1 then
         if cur_lines[y - firstline] then
-          local l, r = utf8split(prev[y], utf8len(cur_lines[y - firstline]))
+          local l, r = utf8.split(prev[y], utf8.len(cur_lines[y - firstline]))
           prev[y] = l
           table.insert(prev, y + 1, r)
         else
@@ -265,7 +263,7 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
 
         local pidx
         if cur_lines[y - firstline] then
-          pidx = utf8len(cur_lines[y - firstline]) + 1
+          pidx = utf8.len(cur_lines[y - firstline]) + 1
         else
           pidx = #pids[y + 1]
         end
@@ -280,8 +278,8 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
 
         SendOp(buf, { OP_TYPE.INS, "\n", new_pid })
       else
-        local c = utf8char(cur_lines[y - firstline + 1], x)
-        prev[y + 1] = utf8insert(prev[y + 1], x, c)
+        local c = utf8.char(cur_lines[y - firstline + 1], x)
+        prev[y + 1] = utf8.insert(prev[y + 1], x, c)
 
         local new_pid = newpids[newpidindex]
         newpidindex = newpidindex + 1
@@ -568,11 +566,6 @@ function splitArray(a, p)
   return left, right
 end
 
-function utf8split(str, i)
-  local s1 = vim.str_byteindex(str, i)
-  return string.sub(str, 1, s1), string.sub(str, s1+1)
-end
-
 function isPIDEqual(a, b)
   if #a ~= #b then return false end
   for i=1,#a do
@@ -619,32 +612,6 @@ function isLowerOrEqual(a, b)
     end
   end
   return true
-end
-
-function utf8len(str)
-  return vim.str_utfindex(str)
-end
-
-function utf8char(str, i)
-  if i >= utf8len(str) or i < 0 then return nil end
-  local s1 = vim.str_byteindex(str, i)
-  local s2 = vim.str_byteindex(str, i+1)
-  return string.sub(str, s1+1, s2)
-end
-
-function utf8insert(str, i, c)
-  if i == utf8len(str) then
-    return str .. c
-  end
-  local s1 = vim.str_byteindex(str, i)
-  return string.sub(str, 1, s1) .. c .. string.sub(str, s1+1)
-end
-
-function utf8remove(str, i)
-  local s1 = vim.str_byteindex(str, i)
-  local s2 = vim.str_byteindex(str, i+1)
-
-  return string.sub(str, 1, s1) .. string.sub(str, s2+1)
 end
 
 function genPID(p, q, s, i)
@@ -749,6 +716,11 @@ local function StartClient(first, appuri, port)
   only_share_cwd = getConfig("g:blue_sentinel_only_cwd", true)
 
   ws_client = websocket_client { uri = appuri, port = port }
+  if not ws_client then
+    error("Could not connect to server")
+    return
+  end
+
   ws_client:connect {
     on_connect = function()
       local obj = {
@@ -802,27 +774,27 @@ local function StartClient(first, appuri, port)
             if op[2] == "\n" then
               if y-2 >= 0 then
                 local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-                local l, r = utf8split(curline, x-1)
+                local l, r = utf8.split(curline, x-1)
                 vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { l, r })
               else
                 vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
               end
             else
               local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-              curline = utf8insert(curline, x-1, op[2])
+              curline = utf8.insert(curline, x-1, op[2])
               vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
             end
 
             if op[2] == "\n" then
               if y-1 >= 1 then
-                local l, r = utf8split(prev[y-1], x-1)
+                local l, r = utf8.split(prev[y-1], x-1)
                 prev[y-1] = l
                 table.insert(prev, y, r)
               else
                 table.insert(prev, y, "")
               end
             else
-              prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
+              prev[y-1] = utf8.insert(prev[y-1], x-1, op[2])
             end
 
 
@@ -843,7 +815,7 @@ local function StartClient(first, appuri, port)
               else
                 if sy > 1 then
                   local curline = vim.api.nvim_buf_get_lines(buf, sy-2, sy-1, true)[1]
-                  curline = utf8remove(curline, sx-2)
+                  curline = utf8.remove(curline, sx-2)
                   vim.api.nvim_buf_set_lines(buf, sy-2, sy-1, true, { curline })
                 end
               end
@@ -856,7 +828,7 @@ local function StartClient(first, appuri, port)
               else
                 if sy > 1 then
                   local curline = prev[sy-1]
-                  curline = utf8remove(curline, sx-2)
+                  curline = utf8.remove(curline, sx-2)
                   prev[sy-1] = curline
                 end
               end
@@ -917,7 +889,7 @@ local function StartClient(first, appuri, port)
                 }
               )
 
-              if prev[y-1] and x-2 >= 0 and x-2 <= utf8len(prev[y-1]) then
+              if prev[y-1] and x-2 >= 0 and x-2 <= utf8.len(prev[y-1]) then
                 local bx = vim.str_byteindex(prev[y-1], x-2)
                 cursors[aut] = {
                   id = vim.api.nvim_buf_add_highlight(buf,
@@ -1070,7 +1042,7 @@ local function StartClient(first, appuri, port)
 
             for _, line in ipairs(content) do
               local lpid = {}
-              for i=0,utf8len(line) do
+              for i=0,utf8.len(line) do
                 table.insert(lpid, pidslist[pidindex])
                 pidindex = pidindex + 1
               end
@@ -1102,7 +1074,7 @@ local function StartClient(first, appuri, port)
 
             for _, line in ipairs(content) do
               local lpid = {}
-              for i=0,utf8len(line) do
+              for i=0,utf8.len(line) do
                 table.insert(lpid, pidslist[pidindex])
                 pidindex = pidindex + 1
               end
@@ -1868,27 +1840,27 @@ local function undo(buf)
       if op[2] == "\n" then
         if y-2 >= 0 then
           local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-          local l, r = utf8split(curline, x-1)
+          local l, r = utf8.split(curline, x-1)
           vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { l, r })
         else
           vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
         end
       else
         local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-        curline = utf8insert(curline, x-1, op[2])
+        curline = utf8.insert(curline, x-1, op[2])
         vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
       end
 
       if op[2] == "\n" then
         if y-1 >= 1 then
-          local l, r = utf8split(prev[y-1], x-1)
+          local l, r = utf8.split(prev[y-1], x-1)
           prev[y-1] = l
           table.insert(prev, y, r)
         else
           table.insert(prev, y, "")
         end
       else
-        prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
+        prev[y-1] = utf8.insert(prev[y-1], x-1, op[2])
       end
 
 
@@ -1909,7 +1881,7 @@ local function undo(buf)
         else
           if sy > 1 then
             local curline = vim.api.nvim_buf_get_lines(buf, sy-2, sy-1, true)[1]
-            curline = utf8remove(curline, sx-2)
+            curline = utf8.remove(curline, sx-2)
             vim.api.nvim_buf_set_lines(buf, sy-2, sy-1, true, { curline })
           end
         end
@@ -1922,7 +1894,7 @@ local function undo(buf)
         else
           if sy > 1 then
             local curline = prev[sy-1]
-            curline = utf8remove(curline, sx-2)
+            curline = utf8.remove(curline, sx-2)
             prev[sy-1] = curline
           end
         end
@@ -1983,7 +1955,7 @@ local function undo(buf)
           }
         )
 
-        if prev[y-1] and x-2 >= 0 and x-2 <= utf8len(prev[y-1]) then
+        if prev[y-1] and x-2 >= 0 and x-2 <= utf8.len(prev[y-1]) then
           local bx = vim.str_byteindex(prev[y-1], x-2)
           cursors[aut] = {
             id = vim.api.nvim_buf_add_highlight(buf,
@@ -2026,7 +1998,7 @@ local function undo(buf)
   if lastPID then
     local x, y = findCharPositionExact(lastPID)
 
-    if prev[y-1] and x-2 >= 0 and x-2 <= utf8len(prev[y-1]) then
+    if prev[y-1] and x-2 >= 0 and x-2 <= utf8.len(prev[y-1]) then
       local bx = vim.str_byteindex(prev[y-1], x-2)
       vim.api.nvim_call_function("cursor", { y-1, bx+1 })
     end
@@ -2101,27 +2073,27 @@ local function redo(buf)
       if op[2] == "\n" then
         if y-2 >= 0 then
           local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-          local l, r = utf8split(curline, x-1)
+          local l, r = utf8.split(curline, x-1)
           vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { l, r })
         else
           vim.api.nvim_buf_set_lines(buf, 0, 0, true, { "" })
         end
       else
         local curline = vim.api.nvim_buf_get_lines(buf, y-2, y-1, true)[1]
-        curline = utf8insert(curline, x-1, op[2])
+        curline = utf8.insert(curline, x-1, op[2])
         vim.api.nvim_buf_set_lines(buf, y-2, y-1, true, { curline })
       end
 
       if op[2] == "\n" then
         if y-1 >= 1 then
-          local l, r = utf8split(prev[y-1], x-1)
+          local l, r = utf8.split(prev[y-1], x-1)
           prev[y-1] = l
           table.insert(prev, y, r)
         else
           table.insert(prev, y, "")
         end
       else
-        prev[y-1] = utf8insert(prev[y-1], x-1, op[2])
+        prev[y-1] = utf8.insert(prev[y-1], x-1, op[2])
       end
 
 
@@ -2142,7 +2114,7 @@ local function redo(buf)
         else
           if sy > 1 then
             local curline = vim.api.nvim_buf_get_lines(buf, sy-2, sy-1, true)[1]
-            curline = utf8remove(curline, sx-2)
+            curline = utf8.remove(curline, sx-2)
             vim.api.nvim_buf_set_lines(buf, sy-2, sy-1, true, { curline })
           end
         end
@@ -2155,7 +2127,7 @@ local function redo(buf)
         else
           if sy > 1 then
             local curline = prev[sy-1]
-            curline = utf8remove(curline, sx-2)
+            curline = utf8.remove(curline, sx-2)
             prev[sy-1] = curline
           end
         end
@@ -2216,7 +2188,7 @@ local function redo(buf)
           }
         )
 
-        if prev[y-1] and x-2 >= 0 and x-2 <= utf8len(prev[y-1]) then
+        if prev[y-1] and x-2 >= 0 and x-2 <= utf8.len(prev[y-1]) then
           local bx = vim.str_byteindex(prev[y-1], x-2)
           cursors[aut] = {
             id = vim.api.nvim_buf_add_highlight(buf,
@@ -2259,7 +2231,7 @@ local function redo(buf)
   if lastPID then
     local x, y = findCharPositionExact(lastPID)
 
-    if prev[y-1] and x-2 >= 0 and x-2 <= utf8len(prev[y-1]) then
+    if prev[y-1] and x-2 >= 0 and x-2 <= utf8.len(prev[y-1]) then
       local bx = vim.str_byteindex(prev[y-1], x-2)
       vim.api.nvim_call_function("cursor", { y-1, bx+1 })
     end
