@@ -1,15 +1,5 @@
 local vim = vim
 local websocket_client = require("blue_sentinel.websocket_client")
-local DetachFromBuffer
-local getConfig
-local findCharPositionBefore
-local splitArray
-local isPIDEqual
-local isLowerOrEqual
-local genPID
-local afterPID
-local SendOp
-local genPIDSeq
 local log = require("blue_sentinel.log")
 local api_attach = {}
 local api_attach_id = 1
@@ -54,6 +44,135 @@ local utf8 = require("blue_sentinel.utf8")
 local constants = require("blue_sentinel.constants")
 local MSG_TYPE = constants.MSG_TYPE
 local OP_TYPE = constants.OP_TYPE
+
+-- HELPERS {{{
+
+local function isLowerOrEqual(a, b)
+  for i, ai in ipairs(a) do
+    if i > #b then return false end
+    local bi = b[i]
+    if ai[1] < bi[1] then return true
+    elseif ai[1] > bi[1] then return false
+    elseif ai[2] < bi[2] then return true
+    elseif ai[2] > bi[2] then return false
+    end
+  end
+  return true
+end
+
+local function genPID(p, q, s, i)
+  local a = (p[i] and p[i][1]) or 0
+  local b = (q[i] and q[i][1]) or MAXINT
+
+  if a+1 < b then
+    return {{math.random(a+1,b-1), s}}
+  end
+
+  local G = genPID(p, q, s, i+1)
+  table.insert(G, 1, {
+    (p[i] and p[i][1]) or 0,
+    (p[i] and p[i][2]) or s})
+  return G
+end
+
+local function afterPID(x, y)
+  if x == #pids[y] then return pids[y+1][1]
+  else return pids[y][x+1] end
+end
+
+local function genPIDSeq(p, q, s, i, N)
+  local a = (p[i] and p[i][1]) or 0
+  local b = (q[i] and q[i][1]) or MAXINT
+
+  if a+N < b-1 then
+    local step = math.floor((b-1 - (a+1))/N)
+    local start = a+1
+    local G = {}
+    for i=1,N do
+      table.insert(G,
+        {{math.random(start,start+step-1), s}})
+      start = start + step
+    end
+    return G
+  end
+
+  local G = genPIDSeq(p, q, s, i+1, N)
+  for j=1,N do
+    table.insert(G[j], 1, {
+      (p[i] and p[i][1]) or 0,
+      (p[i] and p[i][2]) or s})
+  end
+  return G
+end
+
+local function splitArray(a, p)
+  local left, right = {}, {}
+  for i=1,#a do
+    if i < p then left[#left+1] = a[i]
+    else right[#right+1] = a[i] end
+  end
+  return left, right
+end
+
+local function findCharPositionBefore(opid)
+  local y1, y2 = 1, #pids
+  while true do
+    local ym = math.floor((y2 + y1)/2)
+    if ym == y1 then break end
+    if isLowerOrEqual(pids[ym][1], opid) then
+      y1 = ym
+    else
+      y2 = ym
+    end
+  end
+
+  local px, py = 1, 1
+  for y=y1,#pids do
+    for x,pid in ipairs(pids[y]) do
+      if not isLowerOrEqual(pid, opid) then
+        return px, py
+      end
+      px, py = x, y
+    end
+  end
+end
+
+local function findPIDBefore(opid)
+  local x, y = findCharPositionBefore(opid)
+  if x == 1 then
+    return pids[y-1][#pids[y-1]]
+  elseif x then
+    return pids[y][x-1]
+  end
+end
+
+local function getConfig(varname, default)
+  local v, value = pcall(function() return vim.api.nvim_get_var(varname) end)
+  if not v then value = default end
+  return value
+end
+
+-- }}}
+
+function SendOp(buf, op)
+  if not disable_undo then
+    table.insert(undoslice[buf], op)
+  end
+
+  local rem = loc2rem[buf]
+
+  local obj = {
+    MSG_TYPE.TEXT,
+    op,
+    rem,
+    agent,
+  }
+
+  local encoded = vim.api.nvim_call_function("json_encode", { obj })
+
+  log(string.format("send[%d] : %s", agent, vim.inspect(encoded)))
+  ws_client:send_text(encoded)
+end
 
 local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
   if detach[buf] then
@@ -330,21 +449,6 @@ local function attach_to_current_buffer(buf)
   end
 end
 
-local function findPIDBefore(opid)
-  local x, y = findCharPositionBefore(opid)
-  if x == 1 then
-    return pids[y-1][#pids[y-1]]
-  elseif x then
-    return pids[y][x-1]
-  end
-end
-
-function getConfig(varname, default)
-  local v, value = pcall(function() return vim.api.nvim_get_var(varname) end)
-  if not v then value = default end
-  return value
-end
-
 function BlueSentinelOpenOrCreateBuffer(buf)
   if (sessionshare and not received[buf]) then
     local fullname = vim.api.nvim_buf_get_name(buf)
@@ -521,39 +625,7 @@ local function MarkClear()
 
 end
 
-function findCharPositionBefore(opid)
-  local y1, y2 = 1, #pids
-  while true do
-    local ym = math.floor((y2 + y1)/2)
-    if ym == y1 then break end
-    if isLowerOrEqual(pids[ym][1], opid) then
-      y1 = ym
-    else
-      y2 = ym
-    end
-  end
-
-  local px, py = 1, 1
-  for y=y1,#pids do
-    for x,pid in ipairs(pids[y]) do
-      if not isLowerOrEqual(pid, opid) then
-        return px, py
-      end
-      px, py = x, y
-    end
-  end
-end
-
-function splitArray(a, p)
-  local left, right = {}, {}
-  for i=1,#a do
-    if i < p then left[#left+1] = a[i]
-    else right[#right+1] = a[i] end
-  end
-  return left, right
-end
-
-function isPIDEqual(a, b)
+local function isPIDEqual(a, b)
   if #a ~= #b then return false end
   for i=1,#a do
     if a[i][1] ~= b[i][1] then return false end
@@ -584,90 +656,7 @@ local function findCharPositionExact(opid)
       return nil
     end
   end
-
-
 end
-
-function isLowerOrEqual(a, b)
-  for i, ai in ipairs(a) do
-    if i > #b then return false end
-    local bi = b[i]
-    if ai[1] < bi[1] then return true
-    elseif ai[1] > bi[1] then return false
-    elseif ai[2] < bi[2] then return true
-    elseif ai[2] > bi[2] then return false
-    end
-  end
-  return true
-end
-
-function genPID(p, q, s, i)
-  local a = (p[i] and p[i][1]) or 0
-  local b = (q[i] and q[i][1]) or MAXINT
-
-  if a+1 < b then
-    return {{math.random(a+1,b-1), s}}
-  end
-
-  local G = genPID(p, q, s, i+1)
-  table.insert(G, 1, {
-    (p[i] and p[i][1]) or 0,
-    (p[i] and p[i][2]) or s})
-  return G
-end
-
-function afterPID(x, y)
-  if x == #pids[y] then return pids[y+1][1]
-  else return pids[y][x+1] end
-end
-
-function SendOp(buf, op)
-  if not disable_undo then
-    table.insert(undoslice[buf], op)
-  end
-
-  local rem = loc2rem[buf]
-
-  local obj = {
-    MSG_TYPE.TEXT,
-    op,
-    rem,
-    agent,
-  }
-
-  local encoded = vim.api.nvim_call_function("json_encode", { obj })
-
-
-  log(string.format("send[%d] : %s", agent, vim.inspect(encoded)))
-  ws_client:send_text(encoded)
-
-end
-
-function genPIDSeq(p, q, s, i, N)
-  local a = (p[i] and p[i][1]) or 0
-  local b = (q[i] and q[i][1]) or MAXINT
-
-  if a+N < b-1 then
-    local step = math.floor((b-1 - (a+1))/N)
-    local start = a+1
-    local G = {}
-    for i=1,N do
-      table.insert(G,
-        {{math.random(start,start+step-1), s}})
-      start = start + step
-    end
-    return G
-  end
-
-  local G = genPIDSeq(p, q, s, i+1, N)
-  for j=1,N do
-    table.insert(G[j], 1, {
-      (p[i] and p[i][1]) or 0,
-      (p[i] and p[i][2]) or s})
-  end
-  return G
-end
-
 
 local function StartClient(first, appuri, port)
   local v, username = pcall(function() return vim.api.nvim_get_var("blue_sentinel_username") end)
