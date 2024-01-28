@@ -15,7 +15,7 @@ local api_attach = {}
 local api_attach_id = 1
 local attached = {}
 local detach = {}
-allprev = {}
+local allprev = {}
 local prev = { "" }
 local vtextGroup
 local old_namespace
@@ -45,28 +45,16 @@ local MAXINT = 1e10 -- can be adjusted
 local startpos, endpos = {{0, 0}}, {{MAXINT, 0}}
 -- line = [pos]
 -- pids = [line]
-allpids = {}
+local allpids = {}
 local pids = {}
 local agent = 0
 local author = vim.api.nvim_get_var("blue_sentinel_username")
 local ignores = {}
-local MSG_TYPE = {
-  TEXT       = 1,
-  AVAILABLE  = 2,
-  REQUEST    = 3,
-  INFO       = 5,
-  INITIAL    = 6,
-  CONNECT    = 7,
-  DISCONNECT = 8,
-  DATA       = 9,
-  MARK       = 10,
-}
-local OP_TYPE = {
-  DEL = 1,
-  INS = 2,
-}
 
 local utf8 = require("blue_sentinel.utf8")
+local constants = require("blue_sentinel.constants")
+local MSG_TYPE = constants.MSG_TYPE
+local OP_TYPE = constants.OP_TYPE
 
 local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, bytecount)
   if detach[buf] then
@@ -358,7 +346,7 @@ function getConfig(varname, default)
   return value
 end
 
-function blueSentinelOpenOrCreateBuffer(buf)
+function BlueSentinelOpenOrCreateBuffer(buf)
   if (sessionshare and not received[buf]) then
     local fullname = vim.api.nvim_buf_get_name(buf)
     local cwdname = vim.api.nvim_call_function("fnamemodify",
@@ -443,7 +431,7 @@ function blueSentinelOpenOrCreateBuffer(buf)
         allprev[buf]
       }
 
-      encoded = vim.api.nvim_call_function("json_encode", {  obj  })
+      local encoded = vim.api.nvim_call_function("json_encode", {  obj  })
 
       ws_client:send_text(encoded)
 
@@ -452,7 +440,7 @@ function blueSentinelOpenOrCreateBuffer(buf)
   end
 end
 
-function leave_insert()
+function LeaveInsert()
   for buf,_ in pairs(undoslice) do
     if #undoslice[buf] > 0 then
       while undosp[buf] < #undostack[buf] do
@@ -751,7 +739,7 @@ local function StartClient(first, appuri, port)
           local lastPID
 
           local ag, bufid = unpack(other_rem)
-          buf = rem2loc[ag][bufid]
+          local buf = rem2loc[ag][bufid]
 
           prev = allprev[buf]
           pids = allpids[buf]
@@ -1253,7 +1241,7 @@ local function StartClient(first, appuri, port)
             -- this is kind of messy
             -- a better way to write this
             -- would be great
-            vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua blueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
+            vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua BlueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
             vim.api.nvim_command("augroup end")
 
           elseif not is_first and not first then
@@ -1312,7 +1300,7 @@ local function StartClient(first, appuri, port)
               -- this is kind of messy
               -- a better way to write this
               -- would be great
-              vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua blueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
+              vim.api.nvim_command("autocmd BufNewFile,BufRead * call execute('lua BlueSentinelOpenOrCreateBuffer(' . expand('<abuf>') . ')', '')")
               vim.api.nvim_command("augroup end")
 
             end
@@ -1569,7 +1557,7 @@ local function Start(host, port)
   if not autocmd_init then
     vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1592,7 +1580,7 @@ local function Join(host, port)
   if not autocmd_init then
     vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1623,7 +1611,7 @@ local function StartSession(host, port)
   if not autocmd_init then
     vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -1643,7 +1631,7 @@ local function JoinSession(host, port)
   if not autocmd_init then
     vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".leave_insert()]])
+    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
     vim.api.nvim_command("augroup end")
     autocmd_init = true
   end
@@ -2329,7 +2317,7 @@ undo = undo,
 
 redo = redo,
 
-leave_insert = leave_insert,
+LeaveInsert = LeaveInsert,
 
 MarkRange = MarkRange,
 
