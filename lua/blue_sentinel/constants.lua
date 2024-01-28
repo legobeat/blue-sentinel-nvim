@@ -17,4 +17,6 @@ M.OP_TYPE = {
   INS = 2,
 }
 
+M.MAXINT = 1e10
+
 return M
