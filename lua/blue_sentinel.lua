@@ -38,7 +38,6 @@ local hl_group = {}
 local client_hl_group = {}
 local autocmd_init = false
 local marks = {}
-local author2id = {}
 local id2author = {}
 -- pos = [(num, site)]
 local MAXINT = 1e10 -- can be adjusted
@@ -1379,7 +1378,6 @@ local function StartClient(first, appuri, port)
 
         if decoded[1] == MSG_TYPE.CONNECT then
           local _, new_id, new_aut = unpack(decoded)
-          author2id[new_aut] = new_id
           id2author[new_id] = new_aut
           local user_hl_group = 5
           for i=1,4 do
@@ -1404,7 +1402,6 @@ local function StartClient(first, appuri, port)
           local _, remove_id = unpack(decoded)
           local aut = id2author[remove_id]
           if aut then
-            author2id[aut] = nil
             id2author[remove_id] = nil
             if client_hl_group[remove_id] ~= 5 then -- 5 means default hl group (there are four predefined)
               hl_group[client_hl_group[remove_id]] = nil
@@ -2330,4 +2327,3 @@ OpenBuffers = OpenBuffers,
 Status = Status,
 
 }
-
