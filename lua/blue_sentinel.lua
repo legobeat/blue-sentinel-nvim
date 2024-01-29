@@ -1456,11 +1456,7 @@ function DetachFromBuffer(bufnr)
   app_state.detach[bufnr] = true
 end
 
-local function Start(host, port)
-  if app_state.ws_client and app_state.ws_client:is_active() then
-    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
-  end
-
+local function setup_autocmd()
   if not app_state.autocmd_init then
     vim.api.nvim_command("augroup blueSentinelUndo")
     vim.api.nvim_command("autocmd!")
@@ -1468,7 +1464,15 @@ local function Start(host, port)
     vim.api.nvim_command("augroup end")
     app_state.autocmd_init = true
   end
+end
 
+local function Start(host, port)
+  if app_state.ws_client and app_state.ws_client:is_active() then
+    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    return
+  end
+
+  setup_autocmd()
 
   local buf = vim.api.nvim_get_current_buf()
   app_state.singlebuf = buf
@@ -1479,17 +1483,11 @@ end
 
 local function Join(host, port)
   if app_state.ws_client and app_state.ws_client:is_active() then
-    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    return
   end
 
-  if not app_state.autocmd_init then
-    vim.api.nvim_command("augroup blueSentinelUndo")
-    vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
-    vim.api.nvim_command("augroup end")
-    app_state.autocmd_init = true
-  end
-
+  setup_autocmd()
 
   local buf = vim.api.nvim_create_buf(true, false)
   vim.api.nvim_win_set_buf(0, buf)
@@ -1507,17 +1505,11 @@ end
 
 local function StartSession(host, port)
   if app_state.ws_client and app_state.ws_client:is_active() then
-    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    return
   end
 
-  if not app_state.autocmd_init then
-    vim.api.nvim_command("augroup blueSentinelUndo")
-    vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
-    vim.api.nvim_command("augroup end")
-    app_state.autocmd_init = true
-  end
-
+  setup_autocmd()
 
   local first = true
   app_state.sessionshare = true
@@ -1526,17 +1518,11 @@ end
 
 local function JoinSession(host, port)
   if app_state.ws_client and app_state.ws_client:is_active() then
-    error("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
+    return
   end
 
-  if not app_state.autocmd_init then
-    vim.api.nvim_command("augroup blueSentinelUndo")
-    vim.api.nvim_command("autocmd!")
-    vim.api.nvim_command([[autocmd InsertLeave * lua require"blue_sentinel".LeaveInsert()]])
-    vim.api.nvim_command("augroup end")
-    app_state.autocmd_init = true
-  end
-
+  setup_autocmd()
 
   local first = false
   app_state.sessionshare = true
