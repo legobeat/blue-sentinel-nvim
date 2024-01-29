@@ -14,20 +14,17 @@ local splitArray = util.splitArray
 local getConfig = util.getConfig
 
 local app_state = {
-  agent = 0,
-  allpids = {},
-  allprev = {},
+  buffer_pids = {}, -- PID array for each buffer
+  buffer_contents = {}, -- Line contents for each buffer
   api_attach = {},
   api_attach_id = 1,
   attached = {},
-  author = vim.api.nvim_get_var("blue_sentinel_username"),
   autocmd_init = false,
   client_hl_group = {},
   cursorGroup = nil,
   cursors = {},
   detach = {},
   disable_undo = false,
-  endpos = { { MAXINT, 0 } },
   follow = false,
   following_author = nil,
   hl_group = {},
@@ -38,18 +35,22 @@ local app_state = {
   marks = {},
   old_namespace = nil,
   only_share_cwd = nil,
-  pids = {},
-  prev = { "" },
+  pids = {}, -- A table of PID arrays for the current buffer
+  contents = { "" }, -- A table of lines representing the current buffer contents
   received = {},
   sessionshare = false,
   singlebuf = nil,
-  startpos = { { 0, 0 } },
   undoslice = {},
   undosp = {},
   undostack = {},
   vtextGroup = nil,
   ws_client = nil,
 }
+
+local client_username = vim.api.nvim_get_var("blue_sentinel_username")
+local START_POS = { { 0, 0 } }
+local END_POS = { { MAXINT, 0 } }
+local NVIM_AGENT = 0
 
 -- HELPERS {{{
 local function afterPID(x, y)
@@ -104,12 +105,12 @@ function SendOp(buf, op)
     MSG_TYPE.TEXT,
     op,
     rem,
-    app_state.agent,
+    NVIM_AGENT,
   }
 
   local encoded = vim.api.nvim_call_function("json_encode", { obj })
 
-  log(string.format("send[%d] : %s", app_state.agent, vim.inspect(encoded)))
+  log(string.format("send[%d] : %s", NVIM_AGENT, vim.inspect(encoded)))
   app_state.ws_client:send_text(encoded)
 end
 
@@ -140,7 +141,7 @@ local function get_edit_range(cur_lines, firstline, lastline, new_lastline)
     if del_range.end_char == -1 then
       c2 = "\n"
     else
-      c2 = utf8.char(app_state.prev[del_range.end_line + 1] or "", del_range.end_char)
+      c2 = utf8.char(app_state.contents[del_range.end_line + 1] or "", del_range.end_char)
     end
 
     if c1 ~= c2 then
@@ -158,7 +159,7 @@ local function get_edit_range(cur_lines, firstline, lastline, new_lastline)
     end
 
     if del_range.end_char == -1 then
-      del_prev = { end_line = del_range.end_line - 1, end_char = utf8.len(app_state.prev[del_range.end_line] or "") - 1 }
+      del_prev = { end_line = del_range.end_line - 1, end_char = utf8.len(app_state.contents[del_range.end_line] or "") - 1 }
     else
       del_prev = { end_char = del_range.end_char - 1, end_line = del_range.end_line }
     end
@@ -179,7 +180,7 @@ local function get_edit_range(cur_lines, firstline, lastline, new_lastline)
     if del_range.start_char == -1 then
       c2 = "\n"
     else
-      c2 = utf8.char(app_state.prev[del_range.start_line + 1] or "", del_range.start_char)
+      c2 = utf8.char(app_state.contents[del_range.start_line + 1] or "", del_range.start_char)
     end
 
     if c1 ~= c2 then
@@ -193,7 +194,7 @@ local function get_edit_range(cur_lines, firstline, lastline, new_lastline)
       add_range.start_line = add_range.start_line + 1
     end
 
-    if del_range.start_char == utf8.len(app_state.prev[del_range.start_line + 1] or "") then
+    if del_range.start_char == utf8.len(app_state.contents[del_range.start_line + 1] or "") then
       del_range.start_char = -1
       del_range.start_line = del_range.start_line + 1
     end
@@ -213,27 +214,27 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     return
   end
 
-  app_state.prev = app_state.allprev[buf]
-  app_state.pids = app_state.allpids[buf]
+  app_state.contents = app_state.buffer_contents[buf]
+  app_state.pids = app_state.buffer_pids[buf]
 
   local cur_lines = vim.api.nvim_buf_get_lines(buf, firstline, new_lastline, true)
 
   local add_range, del_range = get_edit_range(cur_lines, firstline, lastline, new_lastline)
 
-  local endx = del_range.end_char
+  local end_char = del_range.end_char
   for y = del_range.end_line, del_range.start_line, -1 do
-    local startx = -1
+    local start_char = -1
     if y == del_range.start_line then
-      startx = del_range.start_char
+      start_char = del_range.start_char
     end
 
-    for x = endx, startx, -1 do
+    for x = end_char, start_char, -1 do
       if x == -1 then
-        if #app_state.prev > 1 then
+        if #app_state.contents > 1 then
           if y > 0 then
-            app_state.prev[y] = app_state.prev[y] .. (app_state.prev[y + 1] or "")
+            app_state.contents[y] = app_state.contents[y] .. (app_state.contents[y + 1] or "")
           end
-          table.remove(app_state.prev, y + 1)
+          table.remove(app_state.contents, y + 1)
 
           local del_pid = app_state.pids[y + 2][1]
           for i, pid in ipairs(app_state.pids[y + 2]) do
@@ -246,9 +247,9 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
           SendOp(buf, { OP_TYPE.DEL, "\n", del_pid })
         end
       else
-        local c = utf8.char(app_state.prev[y + 1], x)
+        local c = utf8.char(app_state.contents[y + 1], x)
 
-        app_state.prev[y + 1] = utf8.remove(app_state.prev[y + 1], x)
+        app_state.contents[y + 1] = utf8.remove(app_state.contents[y + 1], x)
 
         local del_pid = app_state.pids[y + 2][x + 2]
         table.remove(app_state.pids[y + 2], x + 2)
@@ -256,29 +257,30 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
         SendOp(buf, { OP_TYPE.DEL, c, del_pid })
       end
     end
-    endx = utf8.len(app_state.prev[y] or "") - 1
+
+    end_char = utf8.len(app_state.contents[y] or "") - 1
   end
 
   local len_insert = 0
-  local startx = add_range.start_char
+  local start_char = add_range.start_char
   for y = add_range.start_line, add_range.end_line do
-    local endx
+    local end_char
     if y == add_range.end_line then
-      endx = add_range.end_char
+      end_char = add_range.end_char
     else
-      endx = utf8.len(cur_lines[y - firstline + 1]) - 1
+      end_char = utf8.len(cur_lines[y - firstline + 1]) - 1
     end
 
-    for x = startx, endx do
+    for _ = start_char, end_char do
       len_insert = len_insert + 1
     end
-    startx = -1
+    start_char = -1
   end
 
   local before_pid, after_pid
   if add_range.start_char == -1 then
     local pidx
-    local x, y = add_range.start_char, add_range.start_line
+    local y = add_range.start_line
     if cur_lines[y - firstline] then
       pidx = utf8.len(cur_lines[y - firstline]) + 1
     else
@@ -293,25 +295,25 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
   end
 
   local newpidindex = 1
-  local newpids = genPIDSeq(before_pid, after_pid, app_state.agent, 1, len_insert)
+  local newpids = genPIDSeq(before_pid, after_pid, NVIM_AGENT, 1, len_insert)
 
-  local startx = add_range.start_char
+  start_char = add_range.start_char
   for y = add_range.start_line, add_range.end_line do
-    local endx
+    local end_char
     if y == add_range.end_line then
-      endx = add_range.end_char
+      end_char = add_range.end_char
     else
-      endx = utf8.len(cur_lines[y - firstline + 1]) - 1
+      end_char = utf8.len(cur_lines[y - firstline + 1]) - 1
     end
 
-    for x = startx, endx do
+    for x = start_char, end_char do
       if x == -1 then
         if cur_lines[y - firstline] then
-          local l, r = utf8.split(app_state.prev[y], utf8.len(cur_lines[y - firstline]))
-          app_state.prev[y] = l
-          table.insert(app_state.prev, y + 1, r)
+          local l, r = utf8.split(app_state.contents[y], utf8.len(cur_lines[y - firstline]))
+          app_state.contents[y] = l
+          table.insert(app_state.contents, y + 1, r)
         else
-          table.insert(app_state.prev, y + 1, "")
+          table.insert(app_state.contents, y + 1, "")
         end
 
         local pidx
@@ -332,7 +334,7 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
         SendOp(buf, { OP_TYPE.INS, "\n", new_pid })
       else
         local c = utf8.char(cur_lines[y - firstline + 1], x)
-        app_state.prev[y + 1] = utf8.insert(app_state.prev[y + 1], x, c)
+        app_state.contents[y + 1] = utf8.insert(app_state.contents[y + 1], x, c)
 
         local new_pid = newpids[newpidindex]
         newpidindex = newpidindex + 1
@@ -342,11 +344,11 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
         SendOp(buf, { OP_TYPE.INS, c, new_pid })
       end
     end
-    startx = -1
+    start_char = -1
   end
 
-  app_state.allprev[buf] = app_state.prev
-  app_state.allpids[buf] = app_state.pids
+  app_state.buffer_contents[buf] = app_state.contents
+  app_state.buffer_pids[buf] = app_state.pids
 
   local mode = vim.api.nvim_call_function("mode", {})
   local insert_mode = mode == "i"
@@ -411,11 +413,11 @@ function BlueSentinelOpenOrCreateBuffer(buf)
     if cwdname ~= fullname or not app_state.only_share_cwd then
       local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
 
-      local middlepos = genPID(app_state.startpos, app_state.endpos, app_state.agent, 1)
+      local middlepos = genPID(START_POS, END_POS, NVIM_AGENT, 1)
       app_state.pids = {
-        { app_state.startpos },
+        { START_POS },
         { middlepos },
-        { app_state.endpos },
+        { END_POS },
       }
 
       local numgen = 0
@@ -431,7 +433,7 @@ function BlueSentinelOpenOrCreateBuffer(buf)
       end
 
       local newpidindex = 1
-      local newpids = genPIDSeq(middlepos, app_state.endpos, app_state.agent, 1, numgen)
+      local newpids = genPIDSeq(middlepos, END_POS, NVIM_AGENT, 1, numgen)
 
       for i = 1, #lines do
         local line = lines[i]
@@ -450,22 +452,22 @@ function BlueSentinelOpenOrCreateBuffer(buf)
         end
       end
 
-      app_state.prev = lines
+      app_state.contents = lines
 
-      app_state.allprev[buf] = app_state.prev
-      app_state.allpids[buf] = app_state.pids
+      app_state.buffer_contents[buf] = app_state.contents
+      app_state.buffer_pids[buf] = app_state.pids
 
-      if not app_state.buffer_id_to_buffer[app_state.agent] then
-        app_state.buffer_id_to_buffer[app_state.agent] = {}
+      if not app_state.buffer_id_to_buffer[NVIM_AGENT] then
+        app_state.buffer_id_to_buffer[NVIM_AGENT] = {}
       end
 
-      app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
-      app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
+      app_state.buffer_id_to_buffer[NVIM_AGENT][buf] = buf
+      app_state.buffer_to_buffer_id[buf] = { NVIM_AGENT, buf }
 
       local rem = app_state.buffer_to_buffer_id[buf]
 
       local pidslist = {}
-      for _, lpid in ipairs(app_state.allpids[buf]) do
+      for _, lpid in ipairs(app_state.buffer_pids[buf]) do
         for _, pid in ipairs(lpid) do
           table.insert(pidslist, pid[1][1])
         end
@@ -476,7 +478,7 @@ function BlueSentinelOpenOrCreateBuffer(buf)
         bufname,
         rem,
         pidslist,
-        app_state.allprev[buf]
+        app_state.buffer_contents[buf]
       }
 
       local encoded = vim.api.nvim_call_function("json_encode", { obj })
@@ -506,8 +508,8 @@ local function MarkRange()
   local _, enum, ecol, _ = unpack(vim.api.nvim_call_function("getpos", { "'>" }))
 
   local curbuf = vim.api.nvim_get_current_buf()
-  local pids = app_state.allpids[curbuf]
-  local prev = app_state.allprev[curbuf]
+  local pids = app_state.buffer_pids[curbuf]
+  local prev = app_state.buffer_contents[curbuf]
 
   ecol = math.min(ecol, string.len(prev[enum]) + 1)
 
@@ -522,14 +524,14 @@ local function MarkRange()
     epid = pids[enum + 1][becol + 1]
   end
 
-  if app_state.marks[app_state.agent] then
-    vim.api.nvim_buf_clear_namespace(app_state.marks[app_state.agent].buf, app_state.marks[app_state.agent].ns_id, 0, -1)
-    app_state.marks[app_state.agent] = nil
+  if app_state.marks[NVIM_AGENT] then
+    vim.api.nvim_buf_clear_namespace(app_state.marks[NVIM_AGENT].buf, app_state.marks[NVIM_AGENT].ns_id, 0, -1)
+    app_state.marks[NVIM_AGENT] = nil
   end
 
-  app_state.marks[app_state.agent] = {}
-  app_state.marks[app_state.agent].buf = curbuf
-  app_state.marks[app_state.agent].ns_id = vim.api.nvim_create_namespace("")
+  app_state.marks[NVIM_AGENT] = {}
+  app_state.marks[NVIM_AGENT].buf = curbuf
+  app_state.marks[NVIM_AGENT].ns_id = vim.api.nvim_create_namespace("")
   for y = snum - 1, enum - 1 do
     local lscol
     if y == snum - 1 then
@@ -546,8 +548,8 @@ local function MarkRange()
     end
 
     vim.api.nvim_buf_add_highlight(
-      app_state.marks[app_state.agent].buf,
-      app_state.marks[app_state.agent].ns_id,
+      app_state.marks[NVIM_AGENT].buf,
+      app_state.marks[NVIM_AGENT].ns_id,
       "TermCursor",
       y, lscol, lecol)
   end
@@ -555,7 +557,7 @@ local function MarkRange()
   local rem = app_state.buffer_to_buffer_id[curbuf]
   local obj = {
     MSG_TYPE.MARK,
-    app_state.agent,
+    NVIM_AGENT,
     rem,
     spid, epid,
   }
@@ -649,8 +651,8 @@ local function StartClient(first, appuri, port)
       local obj = {
         MSG_TYPE.INFO,
         app_state.sessionshare,
-        app_state.author,
-        app_state.agent,
+        client_username,
+        NVIM_AGENT,
       }
       local encoded = vim.api.nvim_call_function("json_encode", { obj })
       app_state.ws_client:send_text(encoded)
@@ -668,7 +670,7 @@ local function StartClient(first, appuri, port)
       local decoded = vim.api.nvim_call_function("json_decode", { wsdata })
 
       if decoded then
-        log(string.format("rec[%d] : %s", app_state.agent, vim.inspect(decoded)))
+        log(string.format("rec[%d] : %s", NVIM_AGENT, vim.inspect(decoded)))
         if decoded[1] == MSG_TYPE.TEXT then
           local _, op, other_rem, other_agent = unpack(decoded)
           local lastPID
@@ -676,8 +678,8 @@ local function StartClient(first, appuri, port)
           local agent, bufid = unpack(other_rem)
           local buf = app_state.buffer_id_to_buffer[agent][bufid]
 
-          app_state.prev = app_state.allprev[buf]
-          app_state.pids = app_state.allpids[buf]
+          app_state.contents = app_state.buffer_contents[buf]
+          app_state.pids = app_state.buffer_pids[buf]
 
           local tick = vim.api.nvim_buf_get_changedtick(buf) + 1
           app_state.ignores[buf][tick] = true
@@ -712,14 +714,14 @@ local function StartClient(first, appuri, port)
 
             if op[2] == "\n" then
               if y - 1 >= 1 then
-                local l, r = utf8.split(app_state.prev[y - 1], x - 1)
-                app_state.prev[y - 1] = l
-                table.insert(app_state.prev, y, r)
+                local l, r = utf8.split(app_state.contents[y - 1], x - 1)
+                app_state.contents[y - 1] = l
+                table.insert(app_state.contents, y, r)
               else
-                table.insert(app_state.prev, y, "")
+                table.insert(app_state.contents, y, "")
               end
             else
-              app_state.prev[y - 1] = utf8.insert(app_state.prev[y - 1], x - 1, op[2])
+              app_state.contents[y - 1] = utf8.insert(app_state.contents[y - 1], x - 1, op[2])
             end
           elseif op[1] == OP_TYPE.DEL then
             lastPID = findPIDBefore(op[3])
@@ -745,14 +747,14 @@ local function StartClient(first, appuri, port)
 
               if sx == 1 then
                 if sy - 2 >= 1 then
-                  app_state.prev[sy - 2] = app_state.prev[sy - 2] .. string.sub(app_state.prev[sy - 1], 1)
+                  app_state.contents[sy - 2] = app_state.contents[sy - 2] .. string.sub(app_state.contents[sy - 1], 1)
                 end
-                table.remove(app_state.prev, sy - 1)
+                table.remove(app_state.contents, sy - 1)
               else
                 if sy > 1 then
-                  local curline = app_state.prev[sy - 1]
+                  local curline = app_state.contents[sy - 1]
                   curline = utf8.remove(curline, sx - 2)
-                  app_state.prev[sy - 1] = curline
+                  app_state.contents[sy - 1] = curline
                 end
               end
 
@@ -768,11 +770,11 @@ local function StartClient(first, appuri, port)
               end
             end
           end
-          app_state.allprev[buf] = app_state.prev
-          app_state.allpids[buf] = app_state.pids
+          app_state.buffer_contents[buf] = app_state.contents
+          app_state.buffer_pids[buf] = app_state.pids
           local author = app_state.client_id_to_author[other_agent]
 
-          if lastPID and other_agent ~= app_state.agent then
+          if lastPID and other_agent ~= NVIM_AGENT then
             local x, y = findCharPositionExact(lastPID)
 
             if app_state.old_namespace[author] then
@@ -810,8 +812,8 @@ local function StartClient(first, appuri, port)
                 }
               )
 
-              if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
-                local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
+              if app_state.contents[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.contents[y - 1]) then
+                local bx = vim.str_byteindex(app_state.contents[y - 1], x - 2)
                 app_state.cursors[author] = {
                   id = vim.api.nvim_buf_add_highlight(buf,
                     0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
@@ -849,7 +851,7 @@ local function StartClient(first, appuri, port)
 
           local function pidslist(b)
             local ps = {}
-            for _, lpid in ipairs(app_state.allpids[b]) do
+            for _, lpid in ipairs(app_state.buffer_pids[b]) do
               for _, pid in ipairs(lpid) do
                 table.insert(ps, pid)
               end
@@ -862,7 +864,7 @@ local function StartClient(first, appuri, port)
             if app_state.buffer_to_buffer_id[buf] then
               rem = app_state.buffer_to_buffer_id[buf]
             else
-              rem = { app_state.agent, buf }
+              rem = { NVIM_AGENT, buf }
             end
             local fullname = vim.api.nvim_buf_get_name(buf)
             local cwdname = vim.api.nvim_call_function("fnamemodify",
@@ -878,7 +880,7 @@ local function StartClient(first, appuri, port)
               bufname,
               rem,
               pidslist(buf),
-              app_state.allprev[buf]
+              app_state.buffer_contents[buf]
             }
 
             encoded = vim.api.nvim_call_function("json_encode", { obj })
@@ -947,7 +949,7 @@ local function StartClient(first, appuri, port)
             app_state.buffer_to_buffer_id[buf] = { agent, bufid }
 
 
-            app_state.prev = content
+            app_state.contents = content
 
             local pidindex = 1
             app_state.pids = {}
@@ -972,14 +974,14 @@ local function StartClient(first, appuri, port)
 
             vim.api.nvim_buf_set_lines(
               buf,
-              0, -1, false, app_state.prev)
+              0, -1, false, app_state.contents)
 
-            app_state.allprev[buf] = app_state.prev
-            app_state.allpids[buf] = app_state.pids
+            app_state.buffer_contents[buf] = app_state.contents
+            app_state.buffer_pids[buf] = app_state.pids
           else
             local buf = app_state.buffer_id_to_buffer[agent][bufid]
 
-            app_state.prev = content
+            app_state.contents = content
 
             local pidindex = 1
             app_state.pids = {}
@@ -1004,10 +1006,10 @@ local function StartClient(first, appuri, port)
 
             vim.api.nvim_buf_set_lines(
               buf,
-              0, -1, false, app_state.prev)
+              0, -1, false, app_state.contents)
 
-            app_state.allprev[buf] = app_state.prev
-            app_state.allpids[buf] = app_state.pids
+            app_state.buffer_contents[buf] = app_state.contents
+            app_state.buffer_pids[buf] = app_state.pids
 
             vim.api.nvim_buf_set_name(buf, bufname)
 
@@ -1022,7 +1024,7 @@ local function StartClient(first, appuri, port)
         if decoded[1] == MSG_TYPE.AVAILABLE then
           local _, is_first, client_id, is_sessionshare = unpack(decoded)
           if is_first and first then
-            app_state.agent = client_id
+            NVIM_AGENT = client_id
 
 
             if app_state.sessionshare then
@@ -1043,11 +1045,11 @@ local function StartClient(first, appuri, port)
               for _, buf in ipairs(bufs) do
                 local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
 
-                local middlepos = genPID(app_state.startpos, app_state.endpos, app_state.agent, 1)
+                local middlepos = genPID(START_POS, END_POS, NVIM_AGENT, 1)
                 app_state.pids = {
-                  { app_state.startpos },
+                  { START_POS },
                   { middlepos },
-                  { app_state.endpos },
+                  { END_POS },
                 }
 
                 local numgen = 0
@@ -1063,7 +1065,7 @@ local function StartClient(first, appuri, port)
                 end
 
                 local newpidindex = 1
-                local newpids = genPIDSeq(middlepos, app_state.endpos, app_state.agent, 1, numgen)
+                local newpids = genPIDSeq(middlepos, END_POS, NVIM_AGENT, 1, numgen)
 
                 for i = 1, #lines do
                   local line = lines[i]
@@ -1082,39 +1084,39 @@ local function StartClient(first, appuri, port)
                   end
                 end
 
-                app_state.prev = lines
+                app_state.contents = lines
 
-                app_state.allprev[buf] = app_state.prev
-                app_state.allpids[buf] = app_state.pids
-                if not app_state.buffer_id_to_buffer[app_state.agent] then
-                  app_state.buffer_id_to_buffer[app_state.agent] = {}
+                app_state.buffer_contents[buf] = app_state.contents
+                app_state.buffer_pids[buf] = app_state.pids
+                if not app_state.buffer_id_to_buffer[NVIM_AGENT] then
+                  app_state.buffer_id_to_buffer[NVIM_AGENT] = {}
                 end
 
-                app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
-                app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
+                app_state.buffer_id_to_buffer[NVIM_AGENT][buf] = buf
+                app_state.buffer_to_buffer_id[buf] = { NVIM_AGENT, buf }
               end
             else
               local buf = app_state.singlebuf
 
               attach_to_current_buffer(buf)
 
-              if not app_state.buffer_id_to_buffer[app_state.agent] then
-                app_state.buffer_id_to_buffer[app_state.agent] = {}
+              if not app_state.buffer_id_to_buffer[NVIM_AGENT] then
+                app_state.buffer_id_to_buffer[NVIM_AGENT] = {}
               end
 
-              app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
-              app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
+              app_state.buffer_id_to_buffer[NVIM_AGENT][buf] = buf
+              app_state.buffer_to_buffer_id[buf] = { NVIM_AGENT, buf }
 
               local rem = app_state.buffer_to_buffer_id[buf]
 
 
               local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
 
-              local middlepos = genPID(app_state.startpos, app_state.endpos, app_state.agent, 1)
+              local middlepos = genPID(START_POS, END_POS, NVIM_AGENT, 1)
               app_state.pids = {
-                { app_state.startpos },
+                { START_POS },
                 { middlepos },
-                { app_state.endpos },
+                { END_POS },
               }
 
               local numgen = 0
@@ -1130,7 +1132,7 @@ local function StartClient(first, appuri, port)
               end
 
               local newpidindex = 1
-              local newpids = genPIDSeq(middlepos, app_state.endpos, app_state.agent, 1, numgen)
+              local newpids = genPIDSeq(middlepos, END_POS, NVIM_AGENT, 1, numgen)
 
               for i = 1, #lines do
                 local line = lines[i]
@@ -1149,10 +1151,10 @@ local function StartClient(first, appuri, port)
                 end
               end
 
-              app_state.prev = lines
+              app_state.contents = lines
 
-              app_state.allprev[buf] = app_state.prev
-              app_state.allpids[buf] = app_state.pids
+              app_state.buffer_contents[buf] = app_state.contents
+              app_state.buffer_pids[buf] = app_state.pids
             end
 
             vim.api.nvim_command("augroup blueSentinelSession")
@@ -1191,15 +1193,15 @@ local function StartClient(first, appuri, port)
               vim.api.nvim_command("augroup end")
 
 
-              for bufhandle, _ in pairs(app_state.allprev) do
+              for bufhandle, _ in pairs(app_state.buffer_contents) do
                 if vim.api.nvim_buf_is_loaded(bufhandle) then
                   DetachFromBuffer(bufhandle)
                 end
               end
 
-              app_state.agent = 0
+              NVIM_AGENT = 0
             else
-              app_state.agent = client_id
+              NVIM_AGENT = client_id
 
 
               if not app_state.sessionshare then
@@ -1249,13 +1251,13 @@ local function StartClient(first, appuri, port)
             vim.api.nvim_command("augroup end")
 
 
-            for bufhandle, _ in pairs(app_state.allprev) do
+            for bufhandle, _ in pairs(app_state.buffer_contents) do
               if vim.api.nvim_buf_is_loaded(bufhandle) then
                 DetachFromBuffer(bufhandle)
               end
             end
 
-            app_state.agent = 0
+            NVIM_AGENT = 0
           elseif not is_first and first then
             print("ERROR: Tried to start a server which is already busy")
             for author, _ in pairs(app_state.cursors) do
@@ -1283,13 +1285,13 @@ local function StartClient(first, appuri, port)
             vim.api.nvim_command("augroup end")
 
 
-            for bufhandle, _ in pairs(app_state.allprev) do
+            for bufhandle, _ in pairs(app_state.buffer_contents) do
               if vim.api.nvim_buf_is_loaded(bufhandle) then
                 DetachFromBuffer(bufhandle)
               end
             end
 
-            app_state.agent = 0
+            NVIM_AGENT = 0
           end
         end
 
@@ -1356,8 +1358,8 @@ local function StartClient(first, appuri, port)
           app_state.marks[other_agent] = {}
           app_state.marks[other_agent].buf = buf
           app_state.marks[other_agent].ns_id = vim.api.nvim_create_namespace("")
-          local scol = vim.str_byteindex(app_state.prev[sy - 1], sx - 1)
-          local ecol = vim.str_byteindex(app_state.prev[ey - 1], ex - 1)
+          local scol = vim.str_byteindex(app_state.contents[sy - 1], sx - 1)
+          local ecol = vim.str_byteindex(app_state.contents[ey - 1], ex - 1)
 
           for y = sy - 1, ey - 1 do
             local lscol
@@ -1439,13 +1441,13 @@ local function StartClient(first, appuri, port)
       vim.api.nvim_command("augroup end")
 
 
-      for bufhandle, _ in pairs(app_state.allprev) do
+      for bufhandle, _ in pairs(app_state.buffer_contents) do
         if vim.api.nvim_buf_is_loaded(bufhandle) then
           DetachFromBuffer(bufhandle)
         end
       end
 
-      app_state.agent = 0
+      NVIM_AGENT = 0
       for _, o in pairs(app_state.api_attach) do
         if o.on_disconnect then
           o.on_disconnect()
@@ -1642,7 +1644,7 @@ local function undo(buf)
   -- which will error. To avoid the last op is
   -- swapped with first
   local lowest = nil
-  local firstpid = app_state.allpids[buf][2][1]
+  local firstpid = app_state.buffer_pids[buf][2][1]
   for i, op in ipairs(ops) do
     if op[1] == OP_TYPE.INS and isLowerOrEqual(op[3], firstpid) then
       lowest = i
@@ -1658,7 +1660,7 @@ local function undo(buf)
 
 
   app_state.disable_undo = true
-  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], app_state.agent
+  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], NVIM_AGENT
   local lastPID
   for _, op in ipairs(ops) do
     if op[1] == OP_TYPE.INS then
@@ -1670,8 +1672,8 @@ local function undo(buf)
     local agent, bufid = unpack(other_rem)
     buf = app_state.buffer_id_to_buffer[agent][bufid]
 
-    app_state.prev = app_state.allprev[buf]
-    app_state.pids = app_state.allpids[buf]
+    app_state.contents = app_state.buffer_contents[buf]
+    app_state.pids = app_state.buffer_pids[buf]
 
     local tick = vim.api.nvim_buf_get_changedtick(buf) + 1
     app_state.ignores[buf][tick] = true
@@ -1706,14 +1708,14 @@ local function undo(buf)
 
       if op[2] == "\n" then
         if y - 1 >= 1 then
-          local l, r = utf8.split(app_state.prev[y - 1], x - 1)
-          app_state.prev[y - 1] = l
-          table.insert(app_state.prev, y, r)
+          local l, r = utf8.split(app_state.contents[y - 1], x - 1)
+          app_state.contents[y - 1] = l
+          table.insert(app_state.contents, y, r)
         else
-          table.insert(app_state.prev, y, "")
+          table.insert(app_state.contents, y, "")
         end
       else
-        app_state.prev[y - 1] = utf8.insert(app_state.prev[y - 1], x - 1, op[2])
+        app_state.contents[y - 1] = utf8.insert(app_state.contents[y - 1], x - 1, op[2])
       end
     elseif op[1] == OP_TYPE.DEL then
       lastPID = findPIDBefore(op[3])
@@ -1739,14 +1741,14 @@ local function undo(buf)
 
         if sx == 1 then
           if sy - 2 >= 1 then
-            app_state.prev[sy - 2] = app_state.prev[sy - 2] .. string.sub(app_state.prev[sy - 1], 1)
+            app_state.contents[sy - 2] = app_state.contents[sy - 2] .. string.sub(app_state.contents[sy - 1], 1)
           end
-          table.remove(app_state.prev, sy - 1)
+          table.remove(app_state.contents, sy - 1)
         else
           if sy > 1 then
-            local curline = app_state.prev[sy - 1]
+            local curline = app_state.contents[sy - 1]
             curline = utf8.remove(curline, sx - 2)
-            app_state.prev[sy - 1] = curline
+            app_state.contents[sy - 1] = curline
           end
         end
 
@@ -1762,11 +1764,11 @@ local function undo(buf)
         end
       end
     end
-    app_state.allprev[buf] = app_state.prev
-    app_state.allpids[buf] = app_state.pids
+    app_state.buffer_contents[buf] = app_state.contents
+    app_state.buffer_pids[buf] = app_state.pids
     local author = app_state.client_id_to_author[other_agent]
 
-    if lastPID and other_agent ~= app_state.agent then
+    if lastPID and other_agent ~= NVIM_AGENT then
       local x, y = findCharPositionExact(lastPID)
 
       if app_state.old_namespace[author] then
@@ -1804,8 +1806,8 @@ local function undo(buf)
           }
         )
 
-        if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
-          local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
+        if app_state.contents[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.contents[y - 1]) then
+          local bx = vim.str_byteindex(app_state.contents[y - 1], x - 2)
           app_state.cursors[author] = {
             id = vim.api.nvim_buf_add_highlight(buf,
               0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
@@ -1843,8 +1845,8 @@ local function undo(buf)
   if lastPID then
     local x, y = findCharPositionExact(lastPID)
 
-    if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
-      local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
+    if app_state.contents[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.contents[y - 1]) then
+      local bx = vim.str_byteindex(app_state.contents[y - 1], x - 2)
       vim.api.nvim_call_function("cursor", { y - 1, bx + 1 })
     end
   end
@@ -1877,7 +1879,7 @@ local function redo(buf)
   -- which will error. To avoid the last op is
   -- swapped with first
   local lowest = nil
-  local firstpid = app_state.allpids[buf][2][1]
+  local firstpid = app_state.buffer_pids[buf][2][1]
   for i, op in ipairs(ops) do
     if op[1] == OP_TYPE.INS and isLowerOrEqual(op[3], firstpid) then
       lowest = i
@@ -1889,15 +1891,15 @@ local function redo(buf)
     ops[lowest], ops[1] = ops[1], ops[lowest]
   end
 
-  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], app_state.agent
+  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], NVIM_AGENT
   app_state.disable_undo = true
   local lastPID
   for _, op in ipairs(ops) do
     local agent, bufid = unpack(other_rem)
     buf = app_state.buffer_id_to_buffer[agent][bufid]
 
-    app_state.prev = app_state.allprev[buf]
-    app_state.pids = app_state.allpids[buf]
+    app_state.contents = app_state.buffer_contents[buf]
+    app_state.pids = app_state.buffer_pids[buf]
 
     local tick = vim.api.nvim_buf_get_changedtick(buf) + 1
     app_state.ignores[buf][tick] = true
@@ -1932,14 +1934,14 @@ local function redo(buf)
 
       if op[2] == "\n" then
         if y - 1 >= 1 then
-          local l, r = utf8.split(app_state.prev[y - 1], x - 1)
-          app_state.prev[y - 1] = l
-          table.insert(app_state.prev, y, r)
+          local l, r = utf8.split(app_state.contents[y - 1], x - 1)
+          app_state.contents[y - 1] = l
+          table.insert(app_state.contents, y, r)
         else
-          table.insert(app_state.prev, y, "")
+          table.insert(app_state.contents, y, "")
         end
       else
-        app_state.prev[y - 1] = utf8.insert(app_state.prev[y - 1], x - 1, op[2])
+        app_state.contents[y - 1] = utf8.insert(app_state.contents[y - 1], x - 1, op[2])
       end
     elseif op[1] == OP_TYPE.DEL then
       lastPID = findPIDBefore(op[3])
@@ -1965,14 +1967,14 @@ local function redo(buf)
 
         if sx == 1 then
           if sy - 2 >= 1 then
-            app_state.prev[sy - 2] = app_state.prev[sy - 2] .. string.sub(app_state.prev[sy - 1], 1)
+            app_state.contents[sy - 2] = app_state.contents[sy - 2] .. string.sub(app_state.contents[sy - 1], 1)
           end
-          table.remove(app_state.prev, sy - 1)
+          table.remove(app_state.contents, sy - 1)
         else
           if sy > 1 then
-            local curline = app_state.prev[sy - 1]
+            local curline = app_state.contents[sy - 1]
             curline = utf8.remove(curline, sx - 2)
-            app_state.prev[sy - 1] = curline
+            app_state.contents[sy - 1] = curline
           end
         end
 
@@ -1988,11 +1990,11 @@ local function redo(buf)
         end
       end
     end
-    app_state.allprev[buf] = app_state.prev
-    app_state.allpids[buf] = app_state.pids
+    app_state.buffer_contents[buf] = app_state.contents
+    app_state.buffer_pids[buf] = app_state.pids
     local author = app_state.client_id_to_author[other_agent]
 
-    if lastPID and other_agent ~= app_state.agent then
+    if lastPID and other_agent ~= NVIM_AGENT then
       local x, y = findCharPositionExact(lastPID)
 
       if app_state.old_namespace[author] then
@@ -2030,8 +2032,8 @@ local function redo(buf)
           }
         )
 
-        if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
-          local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
+        if app_state.contents[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.contents[y - 1]) then
+          local bx = vim.str_byteindex(app_state.contents[y - 1], x - 2)
           app_state.cursors[author] = {
             id = vim.api.nvim_buf_add_highlight(buf,
               0, app_state.cursorGroup[app_state.client_hl_group[other_agent]], y - 2, bx, bx + 1),
@@ -2069,8 +2071,8 @@ local function redo(buf)
   if lastPID then
     local x, y = findCharPositionExact(lastPID)
 
-    if app_state.prev[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.prev[y - 1]) then
-      local bx = vim.str_byteindex(app_state.prev[y - 1], x - 2)
+    if app_state.contents[y - 1] and x - 2 >= 0 and x - 2 <= utf8.len(app_state.contents[y - 1]) then
+      local bx = vim.str_byteindex(app_state.contents[y - 1], x - 2)
       vim.api.nvim_call_function("cursor", { y - 1, bx + 1 })
     end
   end
