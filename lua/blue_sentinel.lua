@@ -1466,7 +1466,12 @@ local function setup_autocmd()
   end
 end
 
-local function Start(host, port)
+local function start_with(args)
+  local host = args.host
+  local port = args.port
+  local first = args.first
+  local sessionshare = args.sessionshare
+
   if app_state.ws_client and app_state.ws_client:is_active() then
     print("Client is already connected. Use BlueSentinelStop first to disconnect.")
     return
@@ -1476,57 +1481,29 @@ local function Start(host, port)
 
   local buf = vim.api.nvim_get_current_buf()
   app_state.singlebuf = buf
-  local first = true
-  app_state.sessionshare = false
+  app_state.sessionshare = sessionshare
   StartClient(first, host, port)
 end
 
-local function Join(host, port)
-  if app_state.ws_client and app_state.ws_client:is_active() then
-    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
-    return
-  end
+local function StartSingle(host, port)
+  start_with({ host = host, port = port, first = true, sessionshare = false })
+end
 
-  setup_autocmd()
+local function JoinSingle(host, port)
+  start_with({ host = host, port = port, first = false, sessionshare = false })
+end
 
-  local buf = vim.api.nvim_create_buf(true, false)
-  vim.api.nvim_win_set_buf(0, buf)
+local function StartSession(host, port)
+  start_with({ host = host, port = port, first = true, sessionshare = true })
+end
 
-  app_state.singlebuf = buf
-  local first = false
-  app_state.sessionshare = false
-  StartClient(first, host, port)
+local function JoinSession(host, port)
+  start_with({ host = host, port = port, first = false, sessionshare = true })
 end
 
 local function Stop()
   app_state.ws_client:disconnect()
   app_state.ws_client = nil
-end
-
-local function StartSession(host, port)
-  if app_state.ws_client and app_state.ws_client:is_active() then
-    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
-    return
-  end
-
-  setup_autocmd()
-
-  local first = true
-  app_state.sessionshare = true
-  StartClient(first, host, port)
-end
-
-local function JoinSession(host, port)
-  if app_state.ws_client and app_state.ws_client:is_active() then
-    print("Client is already connected. Use BlueSentinelStop first to disconnect.")
-    return
-  end
-
-  setup_autocmd()
-
-  local first = false
-  app_state.sessionshare = true
-  StartClient(first, host, port)
 end
 
 local function Status()
@@ -2152,14 +2129,14 @@ local function get_connected_buf_list()
 end
 
 return {
-  Join = Join,
+  Join = JoinSingle,
   JoinSession = JoinSession,
   LeaveInsert = LeaveInsert,
   MarkClear = MarkClear,
   MarkRange = MarkRange,
   OpenBuffers = OpenBuffers,
   SaveBuffers = SaveBuffers,
-  Start = Start,
+  Start = StartSingle,
   StartFollow = StartFollow,
   StartSession = StartSession,
   Status = Status,
