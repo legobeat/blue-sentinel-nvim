@@ -25,7 +25,6 @@ local app_state = {
   cursorGroup = nil,
   cursors = {},
   detach = {},
-  disable_undo = false,
   follow = false,
   following_author = nil,
   hl_group = {},
@@ -41,9 +40,6 @@ local app_state = {
   received = {},
   sessionshare = false,
   singlebuf = nil,
-  undoslice = {},
-  undosp = {},
-  undostack = {},
   vtextGroup = nil,
   ws_client = nil,
   client_id = 0,
@@ -94,10 +90,6 @@ end
 -- }}}
 
 function SendOp(buf, op)
-  if not app_state.disable_undo then
-    table.insert(app_state.undoslice[buf], op)
-  end
-
   local rem = app_state.buffer_to_buffer_id[buf]
 
   local obj = {
@@ -348,31 +340,12 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
 
   app_state.buffer_contents[buf] = app_state.contents
   app_state.buffer_pids[buf] = current_pids
-
-  local mode = vim.api.nvim_call_function("mode", {})
-  local insert_mode = mode == "i"
-
-  if not insert_mode then
-    if #app_state.undoslice[buf] > 0 then
-      while app_state.undosp[buf] < #app_state.undostack[buf] do
-        table.remove(app_state.undostack[buf]) -- remove last element
-      end
-      table.insert(app_state.undostack[buf], app_state.undoslice[buf])
-      app_state.undosp[buf] = app_state.undosp[buf] + 1
-      app_state.undoslice[buf] = {}
-    end
-  end
 end
 
 local function attach_to_current_buffer(buf)
   app_state.attached[buf] = nil
 
   app_state.detach[buf] = nil
-
-  app_state.undostack[buf] = {}
-  app_state.undosp[buf] = 0
-
-  app_state.undoslice[buf] = {}
 
   app_state.ignores[buf] = {}
 
@@ -383,11 +356,6 @@ local function attach_to_current_buffer(buf)
         app_state.attached[buf] = nil
       end
     })
-
-    -- Commented until I understand how the undo engine works
-    -- vim.api.nvim_buf_set_keymap(buf, 'n', 'u', '<cmd>lua require("blue_sentinel").undo(' .. buf .. ')<CR>', {noremap = true})
-    -- vim.api.nvim_buf_set_keymap(buf, 'n', '<C-r>', '<cmd>lua require("blue_sentinel").redo(' .. buf .. ')<CR>', {noremap = true})
-
 
     if attach_success then
       app_state.attached[buf] = true
@@ -490,16 +458,6 @@ function BlueSentinelOpenOrCreateBuffer(buf)
 end
 
 function LeaveInsert()
-  for buf, _ in pairs(app_state.undoslice) do
-    if #app_state.undoslice[buf] > 0 then
-      while app_state.undosp[buf] < #app_state.undostack[buf] do
-        table.remove(app_state.undostack[buf]) -- remove last element
-      end
-      table.insert(app_state.undostack[buf], app_state.undoslice[buf])
-      app_state.undosp[buf] = app_state.undosp[buf] + 1
-      app_state.undoslice[buf] = {}
-    end
-  end
 end
 
 local function MarkRange()
