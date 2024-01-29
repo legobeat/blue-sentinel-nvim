@@ -29,18 +29,18 @@ local app_state = {
   disable_undo = false,
   endpos = { { MAXINT, 0 } },
   follow = false,
-  follow_aut = nil,
+  following_author = nil,
   hl_group = {},
-  id2author = {},
+  client_id_to_author = {},
   ignores = {},
-  loc2rem = {},
+  buffer_id_to_buffer = {}, -- A table of buffers keyed by agent id, then buffer id
+  buffer_to_buffer_id = {}, -- A table of buffer ids and agents, keyed by buffer
   marks = {},
   old_namespace = nil,
   only_share_cwd = nil,
   pids = {},
   prev = { "" },
   received = {},
-  rem2loc = {},
   sessionshare = false,
   singlebuf = nil,
   startpos = { { 0, 0 } },
@@ -98,7 +98,7 @@ function SendOp(buf, op)
     table.insert(app_state.undoslice[buf], op)
   end
 
-  local rem = app_state.loc2rem[buf]
+  local rem = app_state.buffer_to_buffer_id[buf]
 
   local obj = {
     MSG_TYPE.TEXT,
@@ -113,22 +113,7 @@ function SendOp(buf, op)
   app_state.ws_client:send_text(encoded)
 end
 
-local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, _bytecount)
-  if app_state.detach[buf] then
-    app_state.detach[buf] = nil
-    return true
-  end
-
-  if app_state.ignores[buf][changedtick] then
-    app_state.ignores[buf][changedtick] = nil
-    return
-  end
-
-  app_state.prev = app_state.allprev[buf]
-  app_state.pids = app_state.allpids[buf]
-
-  local cur_lines = vim.api.nvim_buf_get_lines(buf, firstline, new_lastline, true)
-
+local function get_edit_range(cur_lines, firstline, lastline, new_lastline)
   local add_range = {
     start_char = -1,
     start_line = firstline,
@@ -214,6 +199,26 @@ local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, 
     end
   end
 
+  return add_range, del_range
+end
+
+local function on_lines(_, buf, changedtick, firstline, lastline, new_lastline, _bytecount)
+  if app_state.detach[buf] then
+    app_state.detach[buf] = nil
+    return true
+  end
+
+  if app_state.ignores[buf][changedtick] then
+    app_state.ignores[buf][changedtick] = nil
+    return
+  end
+
+  app_state.prev = app_state.allprev[buf]
+  app_state.pids = app_state.allpids[buf]
+
+  local cur_lines = vim.api.nvim_buf_get_lines(buf, firstline, new_lastline, true)
+
+  local add_range, del_range = get_edit_range(cur_lines, firstline, lastline, new_lastline)
 
   local endx = del_range.end_char
   for y = del_range.end_line, del_range.start_line, -1 do
@@ -450,14 +455,14 @@ function BlueSentinelOpenOrCreateBuffer(buf)
       app_state.allprev[buf] = app_state.prev
       app_state.allpids[buf] = app_state.pids
 
-      if not app_state.rem2loc[app_state.agent] then
-        app_state.rem2loc[app_state.agent] = {}
+      if not app_state.buffer_id_to_buffer[app_state.agent] then
+        app_state.buffer_id_to_buffer[app_state.agent] = {}
       end
 
-      app_state.rem2loc[app_state.agent][buf] = buf
-      app_state.loc2rem[buf] = { app_state.agent, buf }
+      app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
+      app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
 
-      local rem = app_state.loc2rem[buf]
+      local rem = app_state.buffer_to_buffer_id[buf]
 
       local pidslist = {}
       for _, lpid in ipairs(app_state.allpids[buf]) do
@@ -547,7 +552,7 @@ local function MarkRange()
       y, lscol, lecol)
   end
 
-  local rem = app_state.loc2rem[curbuf]
+  local rem = app_state.buffer_to_buffer_id[curbuf]
   local obj = {
     MSG_TYPE.MARK,
     app_state.agent,
@@ -628,8 +633,8 @@ local function StartClient(first, appuri, port)
 
   app_state.cursors = {}
 
-  app_state.loc2rem = {}
-  app_state.rem2loc = {}
+  app_state.buffer_to_buffer_id = {}
+  app_state.buffer_id_to_buffer = {}
 
   app_state.only_share_cwd = getConfig("g:blue_sentinel_only_cwd", true)
 
@@ -668,8 +673,8 @@ local function StartClient(first, appuri, port)
           local _, op, other_rem, other_agent = unpack(decoded)
           local lastPID
 
-          local ag, bufid = unpack(other_rem)
-          local buf = app_state.rem2loc[ag][bufid]
+          local agent, bufid = unpack(other_rem)
+          local buf = app_state.buffer_id_to_buffer[agent][bufid]
 
           app_state.prev = app_state.allprev[buf]
           app_state.pids = app_state.allpids[buf]
@@ -765,7 +770,7 @@ local function StartClient(first, appuri, port)
           end
           app_state.allprev[buf] = app_state.prev
           app_state.allpids[buf] = app_state.pids
-          local author = app_state.id2author[other_agent]
+          local author = app_state.client_id_to_author[other_agent]
 
           if lastPID and other_agent ~= app_state.agent then
             local x, y = findCharPositionExact(lastPID)
@@ -820,7 +825,7 @@ local function StartClient(first, appuri, port)
                 end
               end
             end
-            if app_state.follow and app_state.follow_aut == author then
+            if app_state.follow and app_state.following_author == author then
               local curbuf = vim.api.nvim_get_current_buf()
               if curbuf ~= buf then
                 vim.api.nvim_set_current_buf(buf)
@@ -854,8 +859,8 @@ local function StartClient(first, appuri, port)
 
           local function send_initial_for_buffer(buf)
             local rem
-            if app_state.loc2rem[buf] then
-              rem = app_state.loc2rem[buf]
+            if app_state.buffer_to_buffer_id[buf] then
+              rem = app_state.buffer_to_buffer_id[buf]
             else
               rem = { app_state.agent, buf }
             end
@@ -904,8 +909,8 @@ local function StartClient(first, appuri, port)
         if decoded[1] == MSG_TYPE.INITIAL then
           local _, bufname, bufid, pidslist, content = unpack(decoded)
 
-          local ag, bufid = unpack(bufid)
-          if not app_state.rem2loc[ag] or not app_state.rem2loc[ag][bufid] then
+          local agent, bufid = unpack(bufid)
+          if not app_state.buffer_id_to_buffer[agent] or not app_state.buffer_id_to_buffer[agent][bufid] then
             local buf
             if not app_state.sessionshare then
               buf = app_state.singlebuf
@@ -934,12 +939,12 @@ local function StartClient(first, appuri, port)
               vim.api.nvim_buf_set_option(buf, "buftype", "")
             end
 
-            if not app_state.rem2loc[ag] then
-              app_state.rem2loc[ag] = {}
+            if not app_state.buffer_id_to_buffer[agent] then
+              app_state.buffer_id_to_buffer[agent] = {}
             end
 
-            app_state.rem2loc[ag][bufid] = buf
-            app_state.loc2rem[buf] = { ag, bufid }
+            app_state.buffer_id_to_buffer[agent][bufid] = buf
+            app_state.buffer_to_buffer_id[buf] = { agent, bufid }
 
 
             app_state.prev = content
@@ -972,7 +977,7 @@ local function StartClient(first, appuri, port)
             app_state.allprev[buf] = app_state.prev
             app_state.allpids[buf] = app_state.pids
           else
-            local buf = app_state.rem2loc[ag][bufid]
+            local buf = app_state.buffer_id_to_buffer[agent][bufid]
 
             app_state.prev = content
 
@@ -1081,26 +1086,26 @@ local function StartClient(first, appuri, port)
 
                 app_state.allprev[buf] = app_state.prev
                 app_state.allpids[buf] = app_state.pids
-                if not app_state.rem2loc[app_state.agent] then
-                  app_state.rem2loc[app_state.agent] = {}
+                if not app_state.buffer_id_to_buffer[app_state.agent] then
+                  app_state.buffer_id_to_buffer[app_state.agent] = {}
                 end
 
-                app_state.rem2loc[app_state.agent][buf] = buf
-                app_state.loc2rem[buf] = { app_state.agent, buf }
+                app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
+                app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
               end
             else
               local buf = app_state.singlebuf
 
               attach_to_current_buffer(buf)
 
-              if not app_state.rem2loc[app_state.agent] then
-                app_state.rem2loc[app_state.agent] = {}
+              if not app_state.buffer_id_to_buffer[app_state.agent] then
+                app_state.buffer_id_to_buffer[app_state.agent] = {}
               end
 
-              app_state.rem2loc[app_state.agent][buf] = buf
-              app_state.loc2rem[buf] = { app_state.agent, buf }
+              app_state.buffer_id_to_buffer[app_state.agent][buf] = buf
+              app_state.buffer_to_buffer_id[buf] = { app_state.agent, buf }
 
-              local rem = app_state.loc2rem[buf]
+              local rem = app_state.buffer_to_buffer_id[buf]
 
 
               local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
@@ -1289,8 +1294,8 @@ local function StartClient(first, appuri, port)
         end
 
         if decoded[1] == MSG_TYPE.CONNECT then
-          local _, new_id, new_aut = unpack(decoded)
-          app_state.id2author[new_id] = new_aut
+          local _, new_id, new_author = unpack(decoded)
+          app_state.client_id_to_author[new_id] = new_author
           local user_hl_group = 5
           for i = 1, 4 do
             if not app_state.hl_group[i] then
@@ -1304,16 +1309,16 @@ local function StartClient(first, appuri, port)
 
           for _, o in pairs(app_state.api_attach) do
             if o.on_clientconnected then
-              o.on_clientconnected(new_aut)
+              o.on_clientconnected(new_author)
             end
           end
         end
 
         if decoded[1] == MSG_TYPE.DISCONNECT then
           local _, remove_id = unpack(decoded)
-          local author = app_state.id2author[remove_id]
+          local author = app_state.client_id_to_author[remove_id]
           if author then
-            app_state.id2author[remove_id] = nil
+            app_state.client_id_to_author[remove_id] = nil
             if app_state.client_hl_group[remove_id] ~= 5 then -- 5 means default hl group (there are four predefined)
               app_state.hl_group[app_state.client_hl_group[remove_id]] = nil
             end
@@ -1337,8 +1342,8 @@ local function StartClient(first, appuri, port)
 
         if decoded[1] == MSG_TYPE.MARK then
           local _, other_agent, rem, spid, epid = unpack(decoded)
-          local ag, rembuf = unpack(rem)
-          local buf = app_state.rem2loc[ag][rembuf]
+          local agent, rembuf = unpack(rem)
+          local buf = app_state.buffer_id_to_buffer[agent][rembuf]
 
           local sx, sy = findCharPositionExact(spid)
           local ex, ey = findCharPositionExact(epid)
@@ -1376,7 +1381,7 @@ local function StartClient(first, appuri, port)
               y - 1, lscol, lecol)
           end
 
-          local author = app_state.id2author[other_agent]
+          local author = app_state.client_id_to_author[other_agent]
 
           app_state.old_namespace[author] = {
             id = vim.api.nvim_create_namespace(author),
@@ -1394,7 +1399,7 @@ local function StartClient(first, appuri, port)
             }
           )
 
-          if app_state.follow and app_state.follow_aut == author then
+          if app_state.follow and app_state.following_author == author then
             local curbuf = vim.api.nvim_get_current_buf()
             if curbuf ~= buf then
               vim.api.nvim_set_current_buf(buf)
@@ -1509,7 +1514,7 @@ end
 local function Status()
   if app_state.ws_client and app_state.ws_client:is_active() then
     local positions = {}
-    for _, author in pairs(app_state.id2author) do
+    for _, author in pairs(app_state.client_id_to_author) do
       local c = app_state.cursors[author]
       if c then
         local buf = c.buf
@@ -1548,7 +1553,7 @@ end
 
 local function StartFollow(author)
   app_state.follow = true
-  app_state.follow_aut = author
+  app_state.following_author = author
   print("Following " .. author)
 end
 
@@ -1653,7 +1658,7 @@ local function undo(buf)
 
 
   app_state.disable_undo = true
-  local other_rem, other_agent = app_state.loc2rem[buf], app_state.agent
+  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], app_state.agent
   local lastPID
   for _, op in ipairs(ops) do
     if op[1] == OP_TYPE.INS then
@@ -1662,8 +1667,8 @@ local function undo(buf)
       op = { OP_TYPE.INS, op[3], op[2] }
     end
 
-    local ag, bufid = unpack(other_rem)
-    buf = app_state.rem2loc[ag][bufid]
+    local agent, bufid = unpack(other_rem)
+    buf = app_state.buffer_id_to_buffer[agent][bufid]
 
     app_state.prev = app_state.allprev[buf]
     app_state.pids = app_state.allpids[buf]
@@ -1759,7 +1764,7 @@ local function undo(buf)
     end
     app_state.allprev[buf] = app_state.prev
     app_state.allpids[buf] = app_state.pids
-    local author = app_state.id2author[other_agent]
+    local author = app_state.client_id_to_author[other_agent]
 
     if lastPID and other_agent ~= app_state.agent then
       local x, y = findCharPositionExact(lastPID)
@@ -1814,7 +1819,7 @@ local function undo(buf)
           end
         end
       end
-      if app_state.follow and app_state.follow_aut == author then
+      if app_state.follow and app_state.following_author == author then
         local curbuf = vim.api.nvim_get_current_buf()
         if curbuf ~= buf then
           vim.api.nvim_set_current_buf(buf)
@@ -1884,12 +1889,12 @@ local function redo(buf)
     ops[lowest], ops[1] = ops[1], ops[lowest]
   end
 
-  local other_rem, other_agent = app_state.loc2rem[buf], app_state.agent
+  local other_rem, other_agent = app_state.buffer_to_buffer_id[buf], app_state.agent
   app_state.disable_undo = true
   local lastPID
   for _, op in ipairs(ops) do
-    local ag, bufid = unpack(other_rem)
-    buf = app_state.rem2loc[ag][bufid]
+    local agent, bufid = unpack(other_rem)
+    buf = app_state.buffer_id_to_buffer[agent][bufid]
 
     app_state.prev = app_state.allprev[buf]
     app_state.pids = app_state.allpids[buf]
@@ -1985,7 +1990,7 @@ local function redo(buf)
     end
     app_state.allprev[buf] = app_state.prev
     app_state.allpids[buf] = app_state.pids
-    local author = app_state.id2author[other_agent]
+    local author = app_state.client_id_to_author[other_agent]
 
     if lastPID and other_agent ~= app_state.agent then
       local x, y = findCharPositionExact(lastPID)
@@ -2040,7 +2045,7 @@ local function redo(buf)
           end
         end
       end
-      if app_state.follow and app_state.follow_aut == author then
+      if app_state.follow and app_state.following_author == author then
         local curbuf = vim.api.nvim_get_current_buf()
         if curbuf ~= buf then
           vim.api.nvim_set_current_buf(buf)
@@ -2104,7 +2109,7 @@ end
 
 local function get_connected_list()
   local connected = {}
-  for _, author in pairs(app_state.id2author) do
+  for _, author in pairs(app_state.client_id_to_author) do
     table.insert(connected, author)
   end
   return connected
@@ -2122,7 +2127,7 @@ end
 
 local function get_connected_buf_list()
   local bufs = {}
-  for buf, _ in pairs(app_state.loc2rem) do
+  for buf, _ in pairs(app_state.buffer_to_buffer_id) do
     table.insert(bufs, buf)
   end
   return bufs
